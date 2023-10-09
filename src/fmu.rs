@@ -22,7 +22,7 @@ pub struct FMUInstance {
     callbacks: Box<fmi2CallbackFunctions>,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub enum FMISignalType {
     Real,
     Integer,
@@ -33,30 +33,30 @@ pub enum FMISignalType {
     Enum,
 }
 
+#[derive(Debug)]
 pub struct FMUSignal {
     pub signal_type: FMISignalType,
     pub value_reference: fmi2ValueReference,
 }
 
-#[allow(dead_code)]
 impl FMU {
-    fn unpack(fmu_path: &Path, target: &Path) -> fmi2Status {
-        let zipfile = std::fs::File::open(fmu_path).unwrap();
-        let mut archive = zip::ZipArchive::new(zipfile).unwrap();
-        let res = archive.extract(target);
+    pub fn new(fmu_path: &Path) -> Self {
+        let fmu_path = fs::canonicalize(fmu_path).unwrap();
+        println!("fmu_path: {:?}", fmu_path);
 
-        match res {
-            Ok(_) => fmi2Status::fmi2OK,
-            Err(_) => fmi2Status::fmi2Error,
+        let target_path = fmu_path.with_extension("");
+        let _status = Self::unpack(&fmu_path, &target_path);
+
+        let fmu_path = target_path;
+        let model_description = Self::model_description(&fmu_path);
+
+        Self {
+            fmu_path: fmu_path.to_path_buf(),
+            model_description,
         }
     }
 
-    fn model_description(fmu_path: &Path) -> FmiModelDescription {
-        let model_desc_path = fmu_path.join("modelDescription.xml");
-        FmiModelDescription::new(&model_desc_path).unwrap()
-    }
-
-    pub fn get_signal_list(&self) -> HashMap<String, FMUSignal> {
+    pub fn get_signal_map(&self) -> HashMap<String, FMUSignal> {
         let mut signal_list: HashMap<String, FMUSignal> = HashMap::new();
         for sv in &self.model_description.model_variables.scalar_variable {
             let signal_type: FMISignalType;
@@ -85,24 +85,23 @@ impl FMU {
         return &self.model_description;
     }
 
-    pub fn new(fmu_path: &Path) -> Self {
-        let fmu_path = fs::canonicalize(fmu_path).unwrap();
-        println!("fmu_path: {:?}", fmu_path);
+    fn unpack(fmu_path: &Path, target: &Path) -> fmi2Status {
+        let zipfile = std::fs::File::open(fmu_path).unwrap();
+        let mut archive = zip::ZipArchive::new(zipfile).unwrap();
+        let res = archive.extract(target);
 
-        let target_path = fmu_path.with_extension("");
-        let _status = Self::unpack(&fmu_path, &target_path);
-
-        let fmu_path = target_path;
-        let model_description = Self::model_description(&fmu_path);
-
-        Self {
-            fmu_path: fmu_path.to_path_buf(),
-            model_description,
+        match res {
+            Ok(_) => fmi2Status::fmi2OK,
+            Err(_) => fmi2Status::fmi2Error,
         }
+    }
+
+    fn model_description(fmu_path: &Path) -> FmiModelDescription {
+        let model_desc_path = fmu_path.join("modelDescription.xml");
+        FmiModelDescription::new(&model_desc_path).unwrap()
     }
 }
 
-#[allow(dead_code)]
 impl FMUInstance {
     pub fn instantiate(fmu: &FMU, simulation_type: fmi2Type, logging_on: bool) -> Self {
         let (os_type, lib_type) = match env::consts::OS {
@@ -328,14 +327,14 @@ impl FMUInstance {
         &self,
         current_communication_point: fmi2Real,
         communication_step_size: fmi2Real,
-        no_set_fmustate_prior_to_current_point: fmi2Boolean,
+        no_set_fmustate_prior_to_current_point: bool,
     ) -> fmi2Status {
         unsafe {
             self.container.do_step(
                 self.instance,
                 current_communication_point,
                 communication_step_size,
-                no_set_fmustate_prior_to_current_point,
+                no_set_fmustate_prior_to_current_point as fmi2Boolean,
             )
         }
     }
