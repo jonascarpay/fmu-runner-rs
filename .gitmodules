@@ -1,0 +1,3 @@
+[submodule "libfmi/fmi-standard"]
+	path = libfmi/fmi-standard
+	url = https://github.com/modelica/fmi-standard.git

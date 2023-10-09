@@ -1,0 +1,13 @@
+[package]
+name = "libfmi"
+version = "2.0.4"
+edition = "2021"
+authors = ["Nikita Rushmanov <rush3nik@gmail.com>", "Marvin Struijk"]
+description = "Generated C bindings for the FMI standard."
+
+[build-dependencies]
+bindgen = "0.65.1"
+cc = "1.0.79"
+
+[dependencies]
+log = "0.4.20"
