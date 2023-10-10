@@ -8,6 +8,7 @@ use std::{
     collections::HashMap,
     env,
     ffi::CString,
+    fmt::Display,
     fs,
     iter::zip,
     ops::Deref,
@@ -367,4 +368,14 @@ impl Drop for FMUInstance {
     fn drop(&mut self) {
         unsafe { self.container.free_instance(self.instance) };
     }
+}
+
+pub fn outputs_to_string<T: Display>(outputs: &HashMap<FMUSignal, T>) -> String {
+    let mut s = String::new();
+
+    for (signal, value) in outputs.iter() {
+        s.push_str(&format!("{}: {:.3} | ", signal.sv.name, value));
+    }
+
+    s
 }
