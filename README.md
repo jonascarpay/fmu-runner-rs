@@ -1,5 +1,10 @@
 # Rust FMU Runner library
 
+[![Crates.io](https://img.shields.io/crates/v/fmu-runner.svg?maxAge=2592000)](https://crates.io/crates/fmu-runner)
+[![Documentation](https://docs.rs/fmu-runner/badge.svg)](https://docs.rs/fmu-runner)
+![Crates.io](https://img.shields.io/crates/l/fmu-runner.svg?maxAge=2592000)
+
+
 <!-- cargo-rdme start -->
 
 A high level Rust wrapper for executing FMU's that follow the FMI 2.0 standard.
