@@ -1,6 +1,6 @@
 [package]
 name = "fmu-runner"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Nikita Rushmanov <rush3nik@gmail.com>", "Marvin Struijk"]
 edition = "2021"
 description = "A high level Rust wrapper for executing FMU's that follow the FMI 2.0 standard."
@@ -10,11 +10,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["model", "ode", "modelica", "fmu", "fmi"]
 categories = ["science", "simulation", "api-bindings"]
 readme = "README.md"
-exclude = [
-    ".devcontainer",
-    ".gitmodules",
-    "tests"
-]
+exclude = [".devcontainer", ".gitmodules", "tests"]
 
 [dependencies]
 dlopen = "0.1.8"

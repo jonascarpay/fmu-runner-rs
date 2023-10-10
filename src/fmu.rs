@@ -1,5 +1,5 @@
 use crate::{
-    model_description::{FmuSignal, FmiModelDescription},
+    model_description::{FmiModelDescription, FmuSignal},
     wrapper::FmiWrapper,
 };
 use dlopen::wrapper::Container;
@@ -63,6 +63,8 @@ impl Fmu {
         })
     }
 }
+
+unsafe impl Send for FmuInstance {}
 
 impl FmuInstance {
     /// "dlopen" an FMU library and call `fmi2Instantiate()` on it.
