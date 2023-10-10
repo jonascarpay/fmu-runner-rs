@@ -10,6 +10,11 @@ license = "MIT OR Apache-2.0"
 keywords = ["model", "ode", "modelica", "fmu", "fmi", "simulation"]
 categories = ["science", "simulation", "api-bindings"]
 readme = "README.md"
+exclude = [
+    ".devcontainer",
+    ".gitmodules",
+    "tests"
+]
 
 [dependencies]
 dlopen = "0.1.8"

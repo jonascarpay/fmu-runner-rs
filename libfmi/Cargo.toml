@@ -7,9 +7,14 @@ description = "Generated C bindings for the FMI standard."
 repository = "https://github.com/Nikita240/fmu-runner-rs"
 homepage = "https://github.com/Nikita240/fmu-runner-rs"
 license = "MIT OR Apache-2.0"
-keywords = ["model", "ode", "modelica", "fmu", "fmi", "simulation"]
+keywords = ["model", "ode", "modelica", "fmu", "fmi"]
 categories = ["science", "simulation", "external-ffi-bindings"]
 readme = "README.md"
+exclude = [
+    "fmi-standard",
+    "!fmi-standard/headers/*.h",
+    "bindgen.sh"
+]
 
 [build-dependencies]
 # bindgen = "0.68.1"
