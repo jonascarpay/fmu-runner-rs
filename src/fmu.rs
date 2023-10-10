@@ -1,5 +1,5 @@
 use crate::{
-    model_description::{FmiModelDescription, ScalarVariable},
+    model_description::{FMUSignal, FmiModelDescription},
     wrapper::FMIWrapper,
 };
 use dlopen::wrapper::Container;
@@ -24,23 +24,6 @@ pub struct FMUInstance {
     simulation_type: fmi2Type,
     #[allow(dead_code)]
     callbacks: Box<fmi2CallbackFunctions>,
-}
-
-#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub enum FMISignalType {
-    Real,
-    Integer,
-    Boolean,
-    // Char,
-    String,
-    // Byte
-    Enum,
-}
-
-#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub struct FMUSignal<'fmu> {
-    pub signal_type: FMISignalType,
-    pub(crate) sv: &'fmu ScalarVariable,
 }
 
 impl FMU {

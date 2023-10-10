@@ -8,8 +8,6 @@ use std::{
 use quick_xml::{de::from_str, DeError};
 use serde::{Deserialize, Deserializer};
 
-use crate::{FMISignalType, FMUSignal};
-
 #[derive(Debug, PartialEq, Default, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 #[allow(non_snake_case)]
@@ -304,6 +302,23 @@ impl FmiModelDescription {
         }
         signal_list
     }
+}
+
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+pub enum FMISignalType {
+    Real,
+    Integer,
+    Boolean,
+    // Char,
+    String,
+    // Byte
+    Enum,
+}
+
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+pub struct FMUSignal<'fmu> {
+    pub signal_type: FMISignalType,
+    pub(crate) sv: &'fmu ScalarVariable,
 }
 
 // test module
