@@ -18,3 +18,6 @@ quick-xml = { version = "0.29.0", features = ["serialize", "serde", "serde-types
 serde = "1.0.164"
 zip = "0.6.6"
 libfmi = { path = "libfmi", version = "=2.0.4" }
+
+[dev-dependencies]
+rstest = "0.18.2"

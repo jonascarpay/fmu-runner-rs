@@ -1,11 +1,17 @@
-use crate::{model_description::FmiModelDescription, wrapper::FMIWrapper};
+use crate::{
+    model_description::{FmiModelDescription, ScalarVariable},
+    wrapper::FMIWrapper,
+};
 use dlopen::wrapper::Container;
 use libfmi::*;
 use std::{
     collections::HashMap,
     env,
     ffi::CString,
-    fs, os,
+    fs,
+    iter::zip,
+    ops::Deref,
+    os,
     path::{Path, PathBuf},
 };
 
@@ -22,7 +28,7 @@ pub struct FMUInstance {
     callbacks: Box<fmi2CallbackFunctions>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub enum FMISignalType {
     Real,
     Integer,
@@ -33,10 +39,10 @@ pub enum FMISignalType {
     Enum,
 }
 
-#[derive(Debug)]
-pub struct FMUSignal {
+#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
+pub struct FMUSignal<'fmu> {
     pub signal_type: FMISignalType,
-    pub value_reference: fmi2ValueReference,
+    pub(crate) sv: &'fmu ScalarVariable,
 }
 
 impl FMU {
@@ -54,31 +60,6 @@ impl FMU {
             fmu_path: fmu_path.to_path_buf(),
             model_description,
         }
-    }
-
-    pub fn get_signal_map(&self) -> HashMap<String, FMUSignal> {
-        let mut signal_list: HashMap<String, FMUSignal> = HashMap::new();
-        for sv in &self.model_description.model_variables.scalar_variable {
-            let signal_type: FMISignalType;
-            if sv.real.is_some() {
-                signal_type = FMISignalType::Real;
-            } else if sv.integer.is_some() {
-                signal_type = FMISignalType::Integer;
-            } else if sv.boolean.is_some() {
-                signal_type = FMISignalType::Boolean;
-            } else {
-                signal_type = FMISignalType::String;
-            }
-
-            signal_list.insert(
-                sv.name.to_string(),
-                FMUSignal {
-                    signal_type,
-                    value_reference: sv.value_reference as fmi2ValueReference,
-                },
-            );
-        }
-        return signal_list;
     }
 
     pub fn get_model_description(&self) -> &FmiModelDescription {
@@ -205,7 +186,15 @@ impl FMUInstance {
         types_platform
     }
 
-    pub fn set_debug_logging(&self, logging_on: bool, log_categories: &[&str]) -> fmi2Status {
+    pub fn get_simulation_type(&self) -> fmi2Type {
+        self.simulation_type
+    }
+
+    pub fn set_debug_logging(
+        &self,
+        logging_on: bool,
+        log_categories: &[&str],
+    ) -> Result<(), fmi2Status> {
         let category_cstr = log_categories
             .iter()
             .map(|c| CString::new(*c).unwrap())
@@ -213,14 +202,14 @@ impl FMUInstance {
 
         let category_ptrs: Vec<_> = category_cstr.iter().map(|c| c.as_ptr()).collect();
 
-        unsafe {
+        Self::ok_or_err(unsafe {
             self.container.set_debug_logging(
                 self.instance,
                 logging_on as fmi2Boolean,
                 category_ptrs.len(),
                 category_ptrs.as_ptr(),
             )
-        }
+        })
     }
 
     pub fn setup_experiment(
@@ -228,8 +217,8 @@ impl FMUInstance {
         start_time: f64,
         stop_time: Option<f64>,
         tolerance: Option<f64>,
-    ) -> fmi2Status {
-        unsafe {
+    ) -> Result<(), fmi2Status> {
+        Self::ok_or_err(unsafe {
             self.container.setup_experiment(
                 self.instance,
                 tolerance.is_some() as fmi2Boolean,
@@ -238,89 +227,54 @@ impl FMUInstance {
                 stop_time.is_some() as fmi2Boolean,
                 stop_time.unwrap_or_else(|| 0.0),
             )
-        }
+        })
     }
 
-    pub fn enter_initialization_mode(&self) -> fmi2Status {
-        unsafe { self.container.enter_initialization_mode(self.instance) }
+    pub fn enter_initialization_mode(&self) -> Result<(), fmi2Status> {
+        Self::ok_or_err(unsafe { self.container.enter_initialization_mode(self.instance) })
     }
 
-    pub fn exit_initialization_mode(&self) -> fmi2Status {
-        unsafe { self.container.exit_initialization_mode(self.instance) }
+    pub fn exit_initialization_mode(&self) -> Result<(), fmi2Status> {
+        Self::ok_or_err(unsafe { self.container.exit_initialization_mode(self.instance) })
     }
 
-    pub fn get_real(
+    pub fn get_reals<'fmu>(
+        &'fmu self,
+        signals: &[FMUSignal<'fmu>],
+    ) -> Result<HashMap<FMUSignal, fmi2Real>, fmi2Status> {
+        self.get(signals, FMIWrapper::get_real)
+    }
+
+    pub fn get_integers<'fmu>(
+        &'fmu self,
+        signals: &[FMUSignal<'fmu>],
+    ) -> Result<HashMap<FMUSignal, fmi2Integer>, fmi2Status> {
+        self.get(signals, FMIWrapper::get_integer)
+    }
+
+    pub fn get_booleans<'fmu>(
+        &'fmu self,
+        signals: &[FMUSignal<'fmu>],
+    ) -> Result<HashMap<FMUSignal, fmi2Integer>, fmi2Status> {
+        self.get(signals, FMIWrapper::get_boolean)
+    }
+
+    pub fn set_reals(&self, value_map: &HashMap<FMUSignal, fmi2Real>) -> Result<(), fmi2Status> {
+        self.set(value_map, FMIWrapper::set_real)
+    }
+
+    pub fn set_integers(
         &self,
-        vrs: &Vec<fmi2ValueReference>,
-        values: &mut Vec<fmi2Real>,
-    ) -> fmi2Status {
-        unsafe {
-            self.container.get_real(
-                self.instance,
-                vrs.as_ptr(),
-                values.len(),
-                values.as_mut_ptr(),
-            )
-        }
+        value_map: &HashMap<FMUSignal, fmi2Integer>,
+    ) -> Result<(), fmi2Status> {
+        self.set(value_map, FMIWrapper::set_integer)
     }
 
-    pub fn set_real(&self, vrs: &Vec<fmi2ValueReference>, values: &Vec<fmi2Real>) -> fmi2Status {
-        unsafe {
-            self.container
-                .set_real(self.instance, vrs.as_ptr(), values.len(), values.as_ptr())
-        }
-    }
-
-    pub fn get_integer(
+    pub fn set_booleans(
         &self,
-        vrs: &Vec<fmi2ValueReference>,
-        values: &mut Vec<fmi2Integer>,
-    ) -> fmi2Status {
-        unsafe {
-            self.container.get_integer(
-                self.instance,
-                vrs.as_ptr(),
-                values.len(),
-                values.as_mut_ptr(),
-            )
-        }
-    }
-
-    pub fn set_integer(
-        &self,
-        vrs: &Vec<fmi2ValueReference>,
-        values: &Vec<fmi2Integer>,
-    ) -> fmi2Status {
-        unsafe {
-            self.container
-                .set_integer(self.instance, vrs.as_ptr(), values.len(), values.as_ptr())
-        }
-    }
-
-    pub fn get_boolean(
-        &self,
-        vrs: &Vec<fmi2ValueReference>,
-        values: &mut Vec<fmi2Boolean>,
-    ) -> fmi2Status {
-        unsafe {
-            self.container.get_boolean(
-                self.instance,
-                vrs.as_ptr(),
-                values.len(),
-                values.as_mut_ptr(),
-            )
-        }
-    }
-
-    pub fn set_boolean(
-        &self,
-        vrs: &Vec<fmi2ValueReference>,
-        values: &Vec<fmi2Boolean>,
-    ) -> fmi2Status {
-        unsafe {
-            self.container
-                .set_boolean(self.instance, vrs.as_ptr(), values.len(), values.as_ptr())
-        }
+        value_map: &HashMap<FMUSignal, fmi2Integer>,
+    ) -> Result<(), fmi2Status> {
+        self.set(value_map, FMIWrapper::set_boolean)
     }
 
     pub fn do_step(
@@ -328,19 +282,84 @@ impl FMUInstance {
         current_communication_point: fmi2Real,
         communication_step_size: fmi2Real,
         no_set_fmustate_prior_to_current_point: bool,
-    ) -> fmi2Status {
-        unsafe {
+    ) -> Result<(), fmi2Status> {
+        Self::ok_or_err(unsafe {
             self.container.do_step(
                 self.instance,
                 current_communication_point,
                 communication_step_size,
                 no_set_fmustate_prior_to_current_point as fmi2Boolean,
             )
+        })
+    }
+
+    fn get<'fmu, T>(
+        &'fmu self,
+        signals: &[FMUSignal<'fmu>],
+        func: unsafe fn(
+            &FMIWrapper,
+            fmi2Component,
+            *const fmi2ValueReference,
+            usize,
+            *mut T,
+        ) -> fmi2Status,
+    ) -> Result<HashMap<FMUSignal, T>, fmi2Status> {
+        let mut values = Vec::<T>::with_capacity(signals.len());
+        match unsafe {
+            values.set_len(signals.len());
+            func(
+                &self.container.deref(),
+                self.instance,
+                signals
+                    .iter()
+                    .map(|s| s.sv.value_reference)
+                    .collect::<Vec<_>>()
+                    .as_ptr(),
+                signals.len(),
+                values.as_mut_ptr(),
+            )
+        } {
+            fmi2Status::fmi2OK => Ok(zip(signals.to_owned(), values).collect()),
+            status => Err(status),
         }
     }
 
-    pub fn get_simulation_type(&self) -> fmi2Type {
-        self.simulation_type
+    fn set<T: Copy>(
+        &self,
+        value_map: &HashMap<FMUSignal, T>,
+        func: unsafe fn(
+            &FMIWrapper,
+            fmi2Component,
+            *const fmi2ValueReference,
+            usize,
+            *const T,
+        ) -> fmi2Status,
+    ) -> Result<(), fmi2Status> {
+        let len = value_map.len();
+        let mut vrs = Vec::<fmi2ValueReference>::with_capacity(len);
+        let mut values = Vec::<T>::with_capacity(len);
+
+        for (signal, value) in value_map.iter() {
+            vrs.push(signal.sv.value_reference);
+            values.push(*value);
+        }
+
+        Self::ok_or_err(unsafe {
+            func(
+                &self.container.deref(),
+                self.instance,
+                vrs.as_ptr(),
+                len,
+                values.as_ptr(),
+            )
+        })
+    }
+
+    fn ok_or_err(status: fmi2Status) -> Result<(), fmi2Status> {
+        match status {
+            fmi2Status::fmi2OK => Ok(()),
+            status => Err(status),
+        }
     }
 }
 

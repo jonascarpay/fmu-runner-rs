@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fmiModelDescription xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" fmiVersion="2.0" modelName="bouncing_ball" guid="{2d419a2d-e219-4dec-86a1-7a500d7b5573}" description="Bouncing ball demo model" generationTool="Dymola Version 2022x (64-bit), 2021-12-08" generationDateAndTime="2023-10-09T19:53:03Z" variableNamingConvention="structured" numberOfEventIndicators="4">
+    <CoSimulation modelIdentifier="bouncing_ball" canHandleVariableCommunicationStepSize="true" canInterpolateInputs="true" maxOutputDerivativeOrder="1" canNotUseMemoryManagementFunctions="true" canGetAndSetFMUstate="true" canSerializeFMUstate="true" providesDirectionalDerivative="true"/>
+    <UnitDefinitions>
+        <Unit name="1"/>
+        <Unit name="m">
+            <BaseUnit m="1"/>
+        </Unit>
+        <Unit name="m/s">
+            <BaseUnit m="1" s="-1"/>
+        </Unit>
+        <Unit name="m/s2">
+            <BaseUnit m="1" s="-2"/>
+        </Unit>
+    </UnitDefinitions>
+    <TypeDefinitions>
+        <SimpleType name="Modelica.Units.SI.Acceleration">
+            <Real quantity="Acceleration" unit="m/s2"/>
+        </SimpleType>
+        <SimpleType name="Modelica.Units.SI.Length">
+            <Real quantity="Length" unit="m"/>
+        </SimpleType>
+        <SimpleType name="Modelica.Units.SI.Velocity">
+            <Real quantity="Velocity" unit="m/s"/>
+        </SimpleType>
+    </TypeDefinitions>
+    <DefaultExperiment startTime="0.0" stopTime="5.0" tolerance="0.0001"/>
+    <ModelVariables>
+        <!-- Index for next variable = 1 -->
+        <ScalarVariable name="g_mps2" valueReference="100663296" description="Gravitational acceleration [m/s2]" variability="constant">
+            <Real declaredType="Modelica.Units.SI.Acceleration" start="-9.806"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 2 -->
+        <ScalarVariable name="h_start" valueReference="16777216" description="Starting height of the ball [m]" causality="parameter" variability="fixed">
+            <Real declaredType="Modelica.Units.SI.Length" start="1.0"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 3 -->
+        <ScalarVariable name="h_min_m" valueReference="16777217" description="Height at which ball stops bouncing [m/s]" causality="parameter" variability="tunable">
+            <Real declaredType="Modelica.Units.SI.Length" start="0.001"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 4 -->
+        <ScalarVariable name="e" valueReference="16777218" description="Coefficient of restitution of the ball" causality="parameter" variability="fixed">
+            <Real unit="1" start="0.7"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 5 -->
+        <ScalarVariable name="h_m" valueReference="33554432" description="Height of ball above the ground [m]">
+            <Real declaredType="Modelica.Units.SI.Length"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 6 -->
+        <ScalarVariable name="der(h_m)" valueReference="587202560" description="der(Height of ball above the ground [m])">
+            <Real unit="m/s" derivative="5"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 7 -->
+        <ScalarVariable name="v_mps" valueReference="33554433" description="Velocity of ball [m/s]" initial="exact">
+            <Real declaredType="Modelica.Units.SI.Velocity" start="0" derivative="5"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 8 -->
+        <ScalarVariable name="der(v_mps)" valueReference="587202561" description="der(Velocity of ball [m/s])">
+            <Real unit="m/s2" derivative="7"/>
+        </ScalarVariable>
+        <!-- Index for next variable = 9 -->
+        <ScalarVariable name="done" valueReference="637534209" description="Flag to turn off bouncing" variability="discrete" initial="exact">
+            <Boolean start="false"/>
+        </ScalarVariable>
+    </ModelVariables>
+    <ModelStructure>
+        <Derivatives>
+            <Unknown index="6" dependencies="7" dependenciesKind="fixed"/>
+            <Unknown index="8" dependencies="5" dependenciesKind="dependent"/>
+        </Derivatives>
+        <InitialUnknowns>
+            <Unknown index="5" dependencies="2" dependenciesKind="dependent"/>
+            <Unknown index="6" dependencies="7" dependenciesKind="dependent"/>
+            <Unknown index="8" dependencies="" dependenciesKind=""/>
+        </InitialUnknowns>
+    </ModelStructure>
+</fmiModelDescription>

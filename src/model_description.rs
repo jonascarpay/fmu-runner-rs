@@ -1,7 +1,14 @@
-use std::{fs, path::Path};
+use std::{
+    collections::HashMap,
+    fs,
+    hash::{Hash, Hasher},
+    path::Path,
+};
 
 use quick_xml::{de::from_str, DeError};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+
+use crate::{FMISignalType, FMUSignal};
 
 #[derive(Debug, PartialEq, Default, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
@@ -89,13 +96,13 @@ pub struct Integer {
     start: Option<i64>,
 }
 
-#[derive(Debug, PartialEq, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct ScalarVariable {
     #[serde(rename = "@name")]
     pub name: String,
     #[serde(rename = "@valueReference")]
-    pub value_reference: usize,
+    pub value_reference: ::std::os::raw::c_uint,
     #[serde(rename = "@description")]
     pub description: String,
     #[serde(rename = "@causality")]
@@ -111,10 +118,36 @@ pub struct ScalarVariable {
     pub boolean: Option<Boolean>,
 }
 
+impl PartialEq for ScalarVariable {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl Eq for ScalarVariable {}
+
+impl Hash for ScalarVariable {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
+
+fn deserialize_to_map<'de, D>(deserializer: D) -> Result<HashMap<String, ScalarVariable>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Vec::<ScalarVariable>::deserialize(deserializer)?;
+    let mut map = HashMap::new();
+    for item in v {
+        map.insert(item.name.clone(), item);
+    }
+    Ok(map)
+}
+
 #[derive(Debug, PartialEq, Default, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct ModelVariables {
-    pub scalar_variable: Vec<ScalarVariable>,
+    #[serde(deserialize_with = "deserialize_to_map")]
+    pub scalar_variable: HashMap<String, ScalarVariable>,
 }
 
 #[derive(Debug, PartialEq, Default, Deserialize)]
@@ -252,19 +285,43 @@ impl FmiModelDescription {
         let text = fs::read_to_string(&path).unwrap();
         from_str(&text)
     }
+
+    pub fn map_signals(&self) -> HashMap<String, FMUSignal> {
+        let mut signal_list: HashMap<String, FMUSignal> = HashMap::new();
+        for (name, sv) in &self.model_variables.scalar_variable {
+            let signal_type: FMISignalType;
+            if sv.real.is_some() {
+                signal_type = FMISignalType::Real;
+            } else if sv.integer.is_some() {
+                signal_type = FMISignalType::Integer;
+            } else if sv.boolean.is_some() {
+                signal_type = FMISignalType::Boolean;
+            } else {
+                signal_type = FMISignalType::String;
+            }
+
+            signal_list.insert(name.clone(), FMUSignal { signal_type, sv });
+        }
+        return signal_list;
+    }
 }
 
-#[test]
-fn model_description() {
-    let text = fs::read_to_string("./tests/parsing/unit-test.xml").unwrap();
-    let md: FmiModelDescription = from_str(&text).unwrap();
+// test module
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
 
-    println!("{:?}", md.description);
-    println!("{:?}", md.default_experiment);
+    #[rstest]
+    #[case("./tests/parsing/unit-test.xml")]
+    #[case("./tests/parsing/complex-fmi.xml")]
+    #[case("./tests/parsing/bouncing-ball.xml")]
+    fn test_parsing_model_description(#[case] xml: &str) {
+        let text = fs::read_to_string(xml).unwrap();
+        let md: FmiModelDescription = from_str(&text).unwrap();
 
-    let text = fs::read_to_string("./tests/parsing/complex-fmi.xml").unwrap();
-    let md: FmiModelDescription = from_str(&text).unwrap();
-
-    println!("{:?}", md.description);
-    println!("{:?}", md.default_experiment);
+        println!("{:?}", md.description);
+        println!("{:?}", md.default_experiment);
+        println!("{:?}", md.model_variables);
+    }
 }
