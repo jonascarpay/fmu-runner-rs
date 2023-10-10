@@ -7,12 +7,12 @@
 //!
 //! ```
 //! use std::{collections::HashMap, path::Path};
-//! use fmu_runner::{FMU, FMUInstance, fmi2Type};
+//! use fmu_runner::{Fmu, FmuInstance, fmi2Type};
 //!
-//! let fmu = FMU::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))?;
+//! let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))?;
 //! let signals = fmu.model_description.map_signals();
 //!
-//! let fmu_cs = FMUInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true)?;
+//! let fmu_cs = FmuInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true)?;
 //!
 //! fmu_cs.setup_experiment(0.0, None, None)?;
 //!
@@ -29,7 +29,7 @@
 //! // Get the current height.
 //! let outputs = fmu_cs.get_reals(&[signals["h_m"]])?;
 //! println!("{}", fmu_runner::outputs_to_string(&outputs));
-//! # Ok::<(), fmu_runner::FMUError>(())
+//! # Ok::<(), fmu_runner::FmuError>(())
 //! ```
 
 mod fmu;

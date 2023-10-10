@@ -4,12 +4,12 @@ use fmu_runner::*;
 
 #[test]
 fn test_bouncing_ball() {
-    let fmu = FMU::unpack(Path::new("./tests/fmu/bouncing_ball.fmu")).unwrap();
+    let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu")).unwrap();
 
     let signals = fmu.model_description.map_signals();
     println!("signals: {:?}", signals);
 
-    let fmu_cs = FMUInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
+    let fmu_cs = FmuInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
 
     fmu_cs.setup_experiment(0.0, None, None).unwrap();
 
@@ -35,12 +35,12 @@ fn test_bouncing_ball() {
 
 #[test]
 fn test_point_mass() {
-    let fmu = FMU::unpack(Path::new("./tests/fmu/point_mass_pendulum.fmu")).unwrap();
+    let fmu = Fmu::unpack(Path::new("./tests/fmu/point_mass_pendulum.fmu")).unwrap();
 
     let signals = fmu.model_description.map_signals();
     println!("signals: {:?}", signals);
 
-    let fmu_cs = FMUInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
+    let fmu_cs = FmuInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
 
     fmu_cs.setup_experiment(0.0, None, None).unwrap();
 

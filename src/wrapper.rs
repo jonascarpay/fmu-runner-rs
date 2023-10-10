@@ -8,7 +8,7 @@ use dlopen_derive::WrapperApi;
 use libfmi::*;
 
 #[derive(WrapperApi)]
-pub struct FMIWrapper {
+pub struct FmiWrapper {
     #[dlopen_name = "fmi2GetVersion"]
     get_version: unsafe extern "C" fn() -> *const ::std::os::raw::c_char,
 

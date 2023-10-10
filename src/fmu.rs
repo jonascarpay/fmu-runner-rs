@@ -1,6 +1,6 @@
 use crate::{
-    model_description::{FMUSignal, FmiModelDescription},
-    wrapper::FMIWrapper,
+    model_description::{FmuSignal, FmiModelDescription},
+    wrapper::FmiWrapper,
 };
 use dlopen::wrapper::Container;
 use libfmi::*;
@@ -12,7 +12,7 @@ use thiserror::Error;
 use zip::result::ZipError;
 
 /// A unpacked FMU with a parsed model description.
-pub struct FMU {
+pub struct Fmu {
     #[allow(dead_code)]
     temp_dir: Option<tempfile::TempDir>,
     unpacked_dir: PathBuf,
@@ -20,17 +20,17 @@ pub struct FMU {
 }
 
 /// An instance of a loaded FMU dynamic library, ready to execute.
-pub struct FMUInstance {
-    container: Container<FMIWrapper>,
+pub struct FmuInstance {
+    container: Container<FmiWrapper>,
     instance: *mut os::raw::c_void,
     simulation_type: fmi2Type,
     #[allow(dead_code)]
     callbacks: Box<fmi2CallbackFunctions>,
 }
 
-impl FMU {
+impl Fmu {
     /// Unpack an FMU file to a tempdir and parse it's model description.
-    pub fn unpack(fmu_path: impl Into<std::path::PathBuf>) -> Result<Self, FMULoadError> {
+    pub fn unpack(fmu_path: impl Into<std::path::PathBuf>) -> Result<Self, FmuLoadError> {
         let temp_dir = tempfile::Builder::new().prefix("fmi-runner").tempdir()?;
 
         let fmu = Self::unpack_to(fmu_path, temp_dir.path())?;
@@ -46,7 +46,7 @@ impl FMU {
     pub fn unpack_to(
         fmu_path: impl Into<std::path::PathBuf>,
         target_dir: impl Into<std::path::PathBuf>,
-    ) -> Result<Self, FMULoadError> {
+    ) -> Result<Self, FmuLoadError> {
         let fmu_path = fs::canonicalize(fmu_path.into())?;
         let target_dir = target_dir.into();
 
@@ -64,13 +64,13 @@ impl FMU {
     }
 }
 
-impl FMUInstance {
+impl FmuInstance {
     /// "dlopen" an FMU library and call `fmi2Instantiate()` on it.
     pub fn load(
-        fmu: &FMU,
+        fmu: &Fmu,
         simulation_type: fmi2Type,
         logging_on: bool,
-    ) -> Result<Self, FMULoadError> {
+    ) -> Result<Self, FmuLoadError> {
         let (os_type, lib_type) = match env::consts::OS {
             "macos" => ("darwin", "dylib"),
             "linux" => ("linux", "so"),
@@ -136,7 +136,7 @@ impl FMUInstance {
         let visible = false as fmi2Boolean;
         let logging_on = logging_on as fmi2Boolean;
 
-        let container: Container<FMIWrapper> = unsafe { Container::load(lib_path) }?;
+        let container: Container<FmiWrapper> = unsafe { Container::load(lib_path) }?;
 
         let instance = unsafe {
             container.instantiate(
@@ -151,7 +151,7 @@ impl FMUInstance {
         };
 
         if instance.is_null() {
-            return Err(FMULoadError::FMUInstantiateFailed);
+            return Err(FmuLoadError::FmuInstantiateFailed);
         }
 
         Ok(Self {
@@ -178,7 +178,7 @@ impl FMUInstance {
         &self,
         logging_on: bool,
         log_categories: &[&str],
-    ) -> Result<(), FMUError> {
+    ) -> Result<(), FmuError> {
         let category_cstr = log_categories
             .iter()
             .map(|c| CString::new(*c).unwrap())
@@ -201,7 +201,7 @@ impl FMUInstance {
         start_time: f64,
         stop_time: Option<f64>,
         tolerance: Option<f64>,
-    ) -> Result<(), FMUError> {
+    ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
             self.container.setup_experiment(
                 self.instance,
@@ -214,51 +214,51 @@ impl FMUInstance {
         })
     }
 
-    pub fn enter_initialization_mode(&self) -> Result<(), FMUError> {
+    pub fn enter_initialization_mode(&self) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe { self.container.enter_initialization_mode(self.instance) })
     }
 
-    pub fn exit_initialization_mode(&self) -> Result<(), FMUError> {
+    pub fn exit_initialization_mode(&self) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe { self.container.exit_initialization_mode(self.instance) })
     }
 
     pub fn get_reals<'fmu>(
         &'fmu self,
-        signals: &[FMUSignal<'fmu>],
-    ) -> Result<HashMap<FMUSignal, fmi2Real>, FMUError> {
-        self.get(signals, FMIWrapper::get_real)
+        signals: &[FmuSignal<'fmu>],
+    ) -> Result<HashMap<FmuSignal, fmi2Real>, FmuError> {
+        self.get(signals, FmiWrapper::get_real)
     }
 
     pub fn get_integers<'fmu>(
         &'fmu self,
-        signals: &[FMUSignal<'fmu>],
-    ) -> Result<HashMap<FMUSignal, fmi2Integer>, FMUError> {
-        self.get(signals, FMIWrapper::get_integer)
+        signals: &[FmuSignal<'fmu>],
+    ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
+        self.get(signals, FmiWrapper::get_integer)
     }
 
     pub fn get_booleans<'fmu>(
         &'fmu self,
-        signals: &[FMUSignal<'fmu>],
-    ) -> Result<HashMap<FMUSignal, fmi2Integer>, FMUError> {
-        self.get(signals, FMIWrapper::get_boolean)
+        signals: &[FmuSignal<'fmu>],
+    ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
+        self.get(signals, FmiWrapper::get_boolean)
     }
 
-    pub fn set_reals(&self, value_map: &HashMap<FMUSignal, fmi2Real>) -> Result<(), FMUError> {
-        self.set(value_map, FMIWrapper::set_real)
+    pub fn set_reals(&self, value_map: &HashMap<FmuSignal, fmi2Real>) -> Result<(), FmuError> {
+        self.set(value_map, FmiWrapper::set_real)
     }
 
     pub fn set_integers(
         &self,
-        value_map: &HashMap<FMUSignal, fmi2Integer>,
-    ) -> Result<(), FMUError> {
-        self.set(value_map, FMIWrapper::set_integer)
+        value_map: &HashMap<FmuSignal, fmi2Integer>,
+    ) -> Result<(), FmuError> {
+        self.set(value_map, FmiWrapper::set_integer)
     }
 
     pub fn set_booleans(
         &self,
-        value_map: &HashMap<FMUSignal, fmi2Integer>,
-    ) -> Result<(), FMUError> {
-        self.set(value_map, FMIWrapper::set_boolean)
+        value_map: &HashMap<FmuSignal, fmi2Integer>,
+    ) -> Result<(), FmuError> {
+        self.set(value_map, FmiWrapper::set_boolean)
     }
 
     pub fn do_step(
@@ -266,7 +266,7 @@ impl FMUInstance {
         current_communication_point: fmi2Real,
         communication_step_size: fmi2Real,
         no_set_fmustate_prior_to_current_point: bool,
-    ) -> Result<(), FMUError> {
+    ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
             self.container.do_step(
                 self.instance,
@@ -279,15 +279,15 @@ impl FMUInstance {
 
     fn get<'fmu, T>(
         &'fmu self,
-        signals: &[FMUSignal<'fmu>],
+        signals: &[FmuSignal<'fmu>],
         func: unsafe fn(
-            &FMIWrapper,
+            &FmiWrapper,
             fmi2Component,
             *const fmi2ValueReference,
             usize,
             *mut T,
         ) -> fmi2Status,
-    ) -> Result<HashMap<FMUSignal, T>, FMUError> {
+    ) -> Result<HashMap<FmuSignal, T>, FmuError> {
         let mut values = Vec::<T>::with_capacity(signals.len());
         match unsafe {
             values.set_len(signals.len());
@@ -304,21 +304,21 @@ impl FMUInstance {
             )
         } {
             fmi2Status::fmi2OK => Ok(zip(signals.to_owned(), values).collect()),
-            status => Err(FMUError::BadFunctionCall(status)),
+            status => Err(FmuError::BadFunctionCall(status)),
         }
     }
 
     fn set<T: Copy>(
         &self,
-        value_map: &HashMap<FMUSignal, T>,
+        value_map: &HashMap<FmuSignal, T>,
         func: unsafe fn(
-            &FMIWrapper,
+            &FmiWrapper,
             fmi2Component,
             *const fmi2ValueReference,
             usize,
             *const T,
         ) -> fmi2Status,
-    ) -> Result<(), FMUError> {
+    ) -> Result<(), FmuError> {
         let len = value_map.len();
         let mut vrs = Vec::<fmi2ValueReference>::with_capacity(len);
         let mut values = Vec::<T>::with_capacity(len);
@@ -339,21 +339,21 @@ impl FMUInstance {
         })
     }
 
-    fn ok_or_err(status: fmi2Status) -> Result<(), FMUError> {
+    fn ok_or_err(status: fmi2Status) -> Result<(), FmuError> {
         match status {
             fmi2Status::fmi2OK => Ok(()),
-            status => Err(FMUError::BadFunctionCall(status)),
+            status => Err(FmuError::BadFunctionCall(status)),
         }
     }
 }
 
-impl Drop for FMUInstance {
+impl Drop for FmuInstance {
     fn drop(&mut self) {
         unsafe { self.container.free_instance(self.instance) };
     }
 }
 
-pub fn outputs_to_string<T: Display>(outputs: &HashMap<FMUSignal, T>) -> String {
+pub fn outputs_to_string<T: Display>(outputs: &HashMap<FmuSignal, T>) -> String {
     let mut s = String::new();
 
     for (signal, value) in outputs.iter() {
@@ -364,23 +364,23 @@ pub fn outputs_to_string<T: Display>(outputs: &HashMap<FMUSignal, T>) -> String 
 }
 
 #[derive(Error, Debug)]
-pub enum FMULoadError {
-    #[error("Invalid FMU path")]
+pub enum FmuLoadError {
+    #[error("Invalid Fmu path")]
     InvalidPath(#[from] io::Error),
-    #[error("Invalid FMU archive")]
-    InvalidFMU(#[from] ZipError),
-    #[error("Invalid FMU model description XML")]
+    #[error("Invalid Fmu archive")]
+    InvalidFmu(#[from] ZipError),
+    #[error("Invalid Fmu model description XML")]
     InvalidModelDescription(#[from] quick_xml::DeError),
-    #[error("Error loading FMU dynamic library")]
+    #[error("Error loading Fmu dynamic library")]
     DLOpen(#[from] dlopen::Error),
     #[error("fmi2Instantiate() call failed")]
-    FMUInstantiateFailed,
+    FmuInstantiateFailed,
 }
 
 #[derive(Error, Debug)]
-pub enum FMUError {
-    #[error("FMU bad function call: {0:?}")]
+pub enum FmuError {
+    #[error("Fmu bad function call: {0:?}")]
     BadFunctionCall(fmi2Status),
-    #[error("FMU load error: {0}")]
-    LoadError(#[from] FMULoadError),
+    #[error("Fmu load error: {0}")]
+    LoadError(#[from] FmuLoadError),
 }

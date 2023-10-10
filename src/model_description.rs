@@ -284,8 +284,8 @@ impl FmiModelDescription {
         from_str(&text)
     }
 
-    pub fn map_signals(&self) -> HashMap<String, FMUSignal> {
-        let mut signal_list: HashMap<String, FMUSignal> = HashMap::new();
+    pub fn map_signals(&self) -> HashMap<String, FmuSignal> {
+        let mut signal_list: HashMap<String, FmuSignal> = HashMap::new();
         for (name, sv) in &self.model_variables.scalar_variable {
             let signal_type: FMISignalType;
             if sv.real.is_some() {
@@ -298,7 +298,7 @@ impl FmiModelDescription {
                 signal_type = FMISignalType::String;
             }
 
-            signal_list.insert(name.clone(), FMUSignal { signal_type, sv });
+            signal_list.insert(name.clone(), FmuSignal { signal_type, sv });
         }
         signal_list
     }
@@ -316,7 +316,7 @@ pub enum FMISignalType {
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub struct FMUSignal<'fmu> {
+pub struct FmuSignal<'fmu> {
     pub signal_type: FMISignalType,
     pub(crate) sv: &'fmu ScalarVariable,
 }
