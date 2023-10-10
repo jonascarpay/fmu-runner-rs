@@ -5,20 +5,17 @@ use crate::{
 use dlopen::wrapper::Container;
 use libfmi::*;
 use std::{
-    collections::HashMap,
-    env,
-    ffi::CString,
-    fmt::Display,
-    fs,
-    iter::zip,
-    ops::Deref,
-    os,
-    path::{Path, PathBuf},
+    collections::HashMap, env, ffi::CString, fmt::Display, fs, io, iter::zip, ops::Deref, os,
+    path::PathBuf,
 };
+use thiserror::Error;
+use zip::result::ZipError;
 
 pub struct FMU {
-    fmu_path: PathBuf,
-    model_description: FmiModelDescription,
+    #[allow(dead_code)]
+    temp_dir: Option<tempfile::TempDir>,
+    unpacked_dir: PathBuf,
+    pub model_description: FmiModelDescription,
 }
 
 pub struct FMUInstance {
@@ -47,45 +44,48 @@ pub struct FMUSignal<'fmu> {
 }
 
 impl FMU {
-    pub fn new(fmu_path: &Path) -> Self {
-        let fmu_path = fs::canonicalize(fmu_path).unwrap();
-        println!("fmu_path: {:?}", fmu_path);
+    /// Unpack an FMU file to a tempdir and parse it's model description.
+    pub fn unpack(fmu_path: impl Into<std::path::PathBuf>) -> Result<Self, FMULoadError> {
+        let temp_dir = tempfile::Builder::new().prefix("fmi-runner").tempdir()?;
 
-        let target_path = fmu_path.with_extension("");
-        let _status = Self::unpack(&fmu_path, &target_path);
+        let fmu = Self::unpack_to(fmu_path, temp_dir.path())?;
 
-        let fmu_path = target_path;
-        let model_description = Self::model_description(&fmu_path);
+        Ok(Self {
+            temp_dir: Some(temp_dir),
+            unpacked_dir: fmu.unpacked_dir,
+            model_description: fmu.model_description,
+        })
+    }
 
-        Self {
-            fmu_path: fmu_path.to_path_buf(),
+    /// Unpack an FMU file to a given target dir and parse it's model description.
+    pub fn unpack_to(
+        fmu_path: impl Into<std::path::PathBuf>,
+        target_dir: impl Into<std::path::PathBuf>,
+    ) -> Result<Self, FMULoadError> {
+        let fmu_path = fs::canonicalize(fmu_path.into())?;
+        let target_dir = target_dir.into();
+
+        let zipfile = std::fs::File::open(fmu_path)?;
+        let mut archive = zip::ZipArchive::new(zipfile)?;
+        archive.extract(&target_dir)?;
+
+        let model_description = FmiModelDescription::new(&target_dir.join("modelDescription.xml"))?;
+
+        Ok(Self {
+            temp_dir: None,
+            unpacked_dir: target_dir,
             model_description,
-        }
-    }
-
-    pub fn get_model_description(&self) -> &FmiModelDescription {
-        return &self.model_description;
-    }
-
-    fn unpack(fmu_path: &Path, target: &Path) -> fmi2Status {
-        let zipfile = std::fs::File::open(fmu_path).unwrap();
-        let mut archive = zip::ZipArchive::new(zipfile).unwrap();
-        let res = archive.extract(target);
-
-        match res {
-            Ok(_) => fmi2Status::fmi2OK,
-            Err(_) => fmi2Status::fmi2Error,
-        }
-    }
-
-    fn model_description(fmu_path: &Path) -> FmiModelDescription {
-        let model_desc_path = fmu_path.join("modelDescription.xml");
-        FmiModelDescription::new(&model_desc_path).unwrap()
+        })
     }
 }
 
 impl FMUInstance {
-    pub fn instantiate(fmu: &FMU, simulation_type: fmi2Type, logging_on: bool) -> Self {
+    /// "dlopen" an FMU library and call `fmi2Instantiate()` on it.
+    pub fn load(
+        fmu: &FMU,
+        simulation_type: fmi2Type,
+        logging_on: bool,
+    ) -> Result<Self, FMULoadError> {
         let (os_type, lib_type) = match env::consts::OS {
             "macos" => ("darwin", "dylib"),
             "linux" => ("linux", "so"),
@@ -124,13 +124,12 @@ impl FMUInstance {
         let lib_str = os_type.to_owned() + arch_type;
 
         // construct the full library path
-        let mut lib_path = Path::new(&fmu.fmu_path)
+        let mut lib_path = fmu
+            .unpacked_dir
             .join("binaries")
             .join(lib_str)
             .join(model_identifier);
         lib_path.set_extension(lib_type);
-
-        println!("lib_path: {:?}", lib_path);
 
         let callbacks = Box::<fmi2CallbackFunctions>::new(fmi2CallbackFunctions {
             logger: Some(logger::callback_logger_handler),
@@ -145,15 +144,14 @@ impl FMUInstance {
         let instance_name = CString::new(instance_name).expect("Error building CString");
 
         let resource_location =
-            "file://".to_owned() + Path::new(&fmu.fmu_path).join("resources").to_str().unwrap();
+            "file://".to_owned() + fmu.unpacked_dir.join("resources").to_str().unwrap();
         // let resource_location = format!("{}{}{}", "file://", self.fmu_path, "resources");
-        println!("res_path: {:?}", resource_location);
         let resource_location = CString::new(resource_location).expect("Error building CString");
 
         let visible = false as fmi2Boolean;
         let logging_on = logging_on as fmi2Boolean;
 
-        let container: Container<FMIWrapper> = unsafe { Container::load(lib_path) }.unwrap();
+        let container: Container<FMIWrapper> = unsafe { Container::load(lib_path) }?;
 
         let instance = unsafe {
             container.instantiate(
@@ -168,15 +166,15 @@ impl FMUInstance {
         };
 
         if instance.is_null() {
-            println!("Instantiation Failed");
+            return Err(FMULoadError::FMUInstantiateFailed);
         }
 
-        Self {
+        Ok(Self {
             container: container,
             instance: instance,
             simulation_type: simulation_type,
             callbacks,
-        }
+        })
     }
 
     pub fn get_types_platform(&self) -> &str {
@@ -378,4 +376,18 @@ pub fn outputs_to_string<T: Display>(outputs: &HashMap<FMUSignal, T>) -> String 
     }
 
     s
+}
+
+#[derive(Error, Debug)]
+pub enum FMULoadError {
+    #[error("Invalid FMU path")]
+    InvalidPath(#[from] io::Error),
+    #[error("Invalid FMU archive")]
+    InvalidFMU(#[from] ZipError),
+    #[error("Invalid FMU model description XML")]
+    InvalidModelDescription(#[from] quick_xml::DeError),
+    #[error("Error loading FMU dynamic library")]
+    DLOpen(#[from] dlopen::Error),
+    #[error("fmi2Instantiate() call failed")]
+    FMUInstantiateFailed,
 }

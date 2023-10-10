@@ -4,12 +4,12 @@ use fmu_runner::*;
 
 #[test]
 fn test_bouncing_ball() {
-    let fmu = FMU::new(Path::new("./tests/fmu/bouncing_ball.fmu"));
+    let fmu = FMU::unpack(Path::new("./tests/fmu/bouncing_ball.fmu")).unwrap();
 
-    let signals = fmu.get_model_description().map_signals();
+    let signals = fmu.model_description.map_signals();
     println!("signals: {:?}", signals);
 
-    let fmu_cs = FMUInstance::instantiate(&fmu, fmi2Type::fmi2CoSimulation, true);
+    let fmu_cs = FMUInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
 
     fmu_cs.setup_experiment(0.0, None, None).unwrap();
 
@@ -35,12 +35,12 @@ fn test_bouncing_ball() {
 
 #[test]
 fn test_point_mass() {
-    let fmu = FMU::new(Path::new("./tests/fmu/point_mass_pendulum.fmu"));
+    let fmu = FMU::unpack(Path::new("./tests/fmu/point_mass_pendulum.fmu")).unwrap();
 
-    let signals = fmu.get_model_description().map_signals();
+    let signals = fmu.model_description.map_signals();
     println!("signals: {:?}", signals);
 
-    let fmu_cs = FMUInstance::instantiate(&fmu, fmi2Type::fmi2CoSimulation, true);
+    let fmu_cs = FMUInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true).unwrap();
 
     fmu_cs.setup_experiment(0.0, None, None).unwrap();
 
@@ -70,4 +70,6 @@ fn test_point_mass() {
         .get_reals(&[signals["theta_rad"], signals["mass_kg"]])
         .unwrap();
     println!("{}", outputs_to_string(&outputs));
+
+    assert_eq!(outputs[&signals["mass_kg"]], 10.0);
 }
