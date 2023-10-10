@@ -4,13 +4,18 @@ version = "0.1.0"
 authors = ["Nikita Rushmanov <rush3nik@gmail.com>", "Marvin Struijk"]
 edition = "2021"
 description = "A high level Rust wrapper for executing FMU's that follow the FMI 2.0 standard."
+repository = "https://github.com/Nikita240/fmu-runner-rs"
 
 [dependencies]
 dlopen = "0.1.8"
 dlopen_derive = "0.1.4"
 libc = { version = "0.2", features = ["align"] }
 log = { version = "0.4", features = ["std", "serde"] }
-quick-xml = { version = "0.29.0", features = ["serialize", "serde", "serde-types"] }
+quick-xml = { version = "0.29.0", features = [
+    "serialize",
+    "serde",
+    "serde-types",
+] }
 serde = "1.0.164"
 zip = "0.6.6"
 libfmi = { path = "libfmi", version = "=2.0.4" }
