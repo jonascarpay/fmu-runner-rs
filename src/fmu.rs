@@ -170,9 +170,9 @@ impl FMUInstance {
         }
 
         Ok(Self {
-            container: container,
-            instance: instance,
-            simulation_type: simulation_type,
+            container,
+            instance,
+            simulation_type,
             callbacks,
         })
     }
@@ -221,10 +221,10 @@ impl FMUInstance {
             self.container.setup_experiment(
                 self.instance,
                 tolerance.is_some() as fmi2Boolean,
-                tolerance.unwrap_or_else(|| 0.0),
+                tolerance.unwrap_or(0.0),
                 start_time,
                 stop_time.is_some() as fmi2Boolean,
-                stop_time.unwrap_or_else(|| 0.0),
+                stop_time.unwrap_or(0.0),
             )
         })
     }
@@ -307,7 +307,7 @@ impl FMUInstance {
         match unsafe {
             values.set_len(signals.len());
             func(
-                &self.container.deref(),
+                self.container.deref(),
                 self.instance,
                 signals
                     .iter()
@@ -345,7 +345,7 @@ impl FMUInstance {
 
         Self::ok_or_err(unsafe {
             func(
-                &self.container.deref(),
+                self.container.deref(),
                 self.instance,
                 vrs.as_ptr(),
                 len,

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 extern crate dlopen;
 
 use dlopen::wrapper::WrapperApi;

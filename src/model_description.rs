@@ -282,7 +282,7 @@ pub struct FmiModelDescription {
 
 impl FmiModelDescription {
     pub fn new(path: &Path) -> Result<Self, DeError> {
-        let text = fs::read_to_string(&path).unwrap();
+        let text = fs::read_to_string(path).unwrap();
         from_str(&text)
     }
 
@@ -302,7 +302,7 @@ impl FmiModelDescription {
 
             signal_list.insert(name.clone(), FMUSignal { signal_type, sv });
         }
-        return signal_list;
+        signal_list
     }
 }
 
