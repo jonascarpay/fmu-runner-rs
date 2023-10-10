@@ -5,8 +5,16 @@ use crate::{
 use dlopen::wrapper::Container;
 use libfmi::*;
 use std::{
-    collections::HashMap, env, ffi::CString, fmt::Display, fs, io, iter::zip, ops::Deref, os,
+    collections::HashMap,
+    env,
+    ffi::CString,
+    fmt::Display,
+    fs, io,
+    iter::zip,
+    ops::Deref,
+    os,
     path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
 };
 use thiserror::Error;
 use zip::result::ZipError;
@@ -14,18 +22,70 @@ use zip::result::ZipError;
 /// A unpacked FMU with a parsed model description.
 pub struct Fmu {
     #[allow(dead_code)]
+    /// Optional tempdir that's used to hold the unpacked FMU.
     temp_dir: Option<tempfile::TempDir>,
+    /// The directory of the unpacked FMU files.
     unpacked_dir: PathBuf,
+    /// Parsed model description XML.
     pub model_description: FmiModelDescription,
 }
 
-/// An instance of a loaded FMU dynamic library, ready to execute.
-pub struct FmuInstance {
-    container: Container<FmiWrapper>,
-    instance: *mut os::raw::c_void,
+/// An instance of a loaded FMU dynamic library.
+pub struct FmuLibrary {
+    /// The loaded dll container.
+    dll: Container<FmiWrapper>,
+    /// The simulation type of the loaded dll.
+    ///
+    /// Note that FMI specifies different libraries for CoSimulation vs ModelExchange
+    /// so we must keep track of which library we loaded from this FMU.
     simulation_type: fmi2Type,
+    /// The unpacked FMU. The FmuLibrary needs to take ownership of it to keep
+    /// the tempdir alive.
+    pub inner: Fmu,
+    /// Generates unique instance names for starting new FMU instances.
+    instance_name_factory: InstanceNameFactory,
+}
+
+/// A simulation "instance", ready to execute.
+pub struct FmuInstance<'fmu> {
+    /// The loaded dll library.
+    lib: &'fmu FmuLibrary,
+    /// A pointer to the "instance" we created by calling [`fmi2Instantiate`].
+    instance: *mut os::raw::c_void,
     #[allow(dead_code)]
     callbacks: Box<fmi2CallbackFunctions>,
+}
+
+/// Generates unique instance names for starting new FMU instances.
+struct InstanceNameFactory {
+    model_identifier: String,
+    /// This gets incremented every time we start a new instance of a simulation
+    /// on the dll. Instances must have unique names so we append this counter
+    /// to the instance name.
+    instance_counter: AtomicUsize,
+}
+
+impl Deref for FmuLibrary {
+    type Target = Fmu;
+
+    /// Deref to the inner [`Fmu`] type.
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl InstanceNameFactory {
+    fn new(model_identifier: String) -> Self {
+        Self {
+            model_identifier,
+            instance_counter: AtomicUsize::new(0),
+        }
+    }
+
+    fn next(&self) -> String {
+        let instance_counter = self.instance_counter.fetch_add(1, Ordering::Relaxed);
+        format!("{}_{}", self.model_identifier, instance_counter)
+    }
 }
 
 impl Fmu {
@@ -62,17 +122,9 @@ impl Fmu {
             model_description,
         })
     }
-}
 
-unsafe impl Send for FmuInstance {}
-
-impl FmuInstance {
-    /// "dlopen" an FMU library and call `fmi2Instantiate()` on it.
-    pub fn load(
-        fmu: &Fmu,
-        simulation_type: fmi2Type,
-        logging_on: bool,
-    ) -> Result<Self, FmuLoadError> {
+    /// Load the FMU dynamic library.
+    pub fn load(self, simulation_type: fmi2Type) -> Result<FmuLibrary, FmuLoadError> {
         let (os_type, lib_type) = match env::consts::OS {
             "macos" => ("darwin", "dylib"),
             "linux" => ("linux", "so"),
@@ -88,35 +140,62 @@ impl FmuInstance {
             _ => "unknown",
         };
 
-        let fmu_guid = &fmu.model_description.guid;
-
-        let mut model_identifier = "";
-        if let Some(co_sim) = &fmu.model_description.co_simulation {
-            match simulation_type {
-                fmi2Type::fmi2ModelExchange => {}
-                fmi2Type::fmi2CoSimulation => model_identifier = &co_sim.model_identifier,
-            }
-        }
-        if let Some(mod_ex) = &fmu.model_description.model_exchange {
-            match simulation_type {
-                fmi2Type::fmi2ModelExchange => model_identifier = &mod_ex.model_identifier,
-                fmi2Type::fmi2CoSimulation => {}
-            }
-        }
-
-        // must be unique if we need multiple instances, not implemented for simplicity
-        let instance_name = model_identifier.clone();
+        let model_identifier = match simulation_type {
+            fmi2Type::fmi2ModelExchange => self
+                .model_description
+                .model_exchange
+                .as_ref()
+                .ok_or(FmuLoadError::NoModelExchangeModel)?
+                .model_identifier
+                .clone(),
+            fmi2Type::fmi2CoSimulation => self
+                .model_description
+                .co_simulation
+                .as_ref()
+                .ok_or(FmuLoadError::NoCoSimulationModel)?
+                .model_identifier
+                .clone(),
+        };
 
         // construct the library folder string
         let lib_str = os_type.to_owned() + arch_type;
 
         // construct the full library path
-        let mut lib_path = fmu
+        let mut lib_path = self
             .unpacked_dir
             .join("binaries")
             .join(lib_str)
-            .join(model_identifier);
+            .join(&model_identifier);
         lib_path.set_extension(lib_type);
+
+        FmuLibrary::load(lib_path, simulation_type, self, model_identifier)
+    }
+}
+
+impl FmuLibrary {
+    fn load(
+        lib_path: impl Into<std::path::PathBuf>,
+        simulation_type: fmi2Type,
+        fmu: Fmu,
+        model_identifier: String,
+    ) -> Result<Self, FmuLoadError> {
+        let dll: Container<FmiWrapper> = unsafe { Container::load(lib_path.into()) }?;
+
+        Ok(Self {
+            dll,
+            simulation_type,
+            inner: fmu,
+            instance_name_factory: InstanceNameFactory::new(model_identifier),
+        })
+    }
+}
+
+unsafe impl<'fmu> Send for FmuInstance<'fmu> {}
+
+impl<'fmu> FmuInstance<'fmu> {
+    /// Call `fmi2Instantiate()` on the FMU library to start a new simulation instance.
+    pub fn instantiate(lib: &'fmu FmuLibrary, logging_on: bool) -> Result<Self, FmuError> {
+        let fmu_guid = &lib.model_description.guid;
 
         let callbacks = Box::<fmi2CallbackFunctions>::new(fmi2CallbackFunctions {
             logger: Some(logger::callback_logger_handler),
@@ -126,24 +205,24 @@ impl FmuInstance {
             componentEnvironment: std::ptr::null_mut::<std::os::raw::c_void>(),
         });
 
-        let fmu_guid = CString::new(fmu_guid.as_bytes()).expect("Error building CString");
-
-        let instance_name = CString::new(instance_name).expect("Error building CString");
+        let fmu_guid = CString::new(fmu_guid.as_bytes()).expect("Error building fmu_guid CString");
 
         let resource_location =
-            "file://".to_owned() + fmu.unpacked_dir.join("resources").to_str().unwrap();
-        // let resource_location = format!("{}{}{}", "file://", self.fmu_path, "resources");
-        let resource_location = CString::new(resource_location).expect("Error building CString");
+            "file://".to_owned() + lib.unpacked_dir.join("resources").to_str().unwrap();
+        let resource_location =
+            CString::new(resource_location).expect("Error building resource_location CString");
 
         let visible = false as fmi2Boolean;
         let logging_on = logging_on as fmi2Boolean;
 
-        let container: Container<FmiWrapper> = unsafe { Container::load(lib_path) }?;
+        // Generate a unique instance name to support multiple simulations at once.
+        let instance_name = CString::new(lib.instance_name_factory.next())
+            .expect("Error building instance_name CString");
 
         let instance = unsafe {
-            container.instantiate(
+            lib.dll.instantiate(
                 instance_name.as_ptr(),
-                simulation_type,
+                lib.simulation_type,
                 fmu_guid.as_ptr(),
                 resource_location.as_ptr(),
                 &*callbacks,
@@ -153,27 +232,21 @@ impl FmuInstance {
         };
 
         if instance.is_null() {
-            return Err(FmuLoadError::FmuInstantiateFailed);
+            return Err(FmuError::FmuInstantiateFailed);
         }
 
         Ok(Self {
-            container,
+            lib,
             instance,
-            simulation_type,
             callbacks,
         })
     }
 
     pub fn get_types_platform(&self) -> &str {
-        let types_platform =
-            unsafe { std::ffi::CStr::from_ptr(self.container.get_types_platform()) }
-                .to_str()
-                .unwrap();
+        let types_platform = unsafe { std::ffi::CStr::from_ptr(self.lib.dll.get_types_platform()) }
+            .to_str()
+            .unwrap();
         types_platform
-    }
-
-    pub fn get_simulation_type(&self) -> fmi2Type {
-        self.simulation_type
     }
 
     pub fn set_debug_logging(
@@ -189,7 +262,7 @@ impl FmuInstance {
         let category_ptrs: Vec<_> = category_cstr.iter().map(|c| c.as_ptr()).collect();
 
         Self::ok_or_err(unsafe {
-            self.container.set_debug_logging(
+            self.lib.dll.set_debug_logging(
                 self.instance,
                 logging_on as fmi2Boolean,
                 category_ptrs.len(),
@@ -205,7 +278,7 @@ impl FmuInstance {
         tolerance: Option<f64>,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.container.setup_experiment(
+            self.lib.dll.setup_experiment(
                 self.instance,
                 tolerance.is_some() as fmi2Boolean,
                 tolerance.unwrap_or(0.0),
@@ -217,28 +290,28 @@ impl FmuInstance {
     }
 
     pub fn enter_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.container.enter_initialization_mode(self.instance) })
+        Self::ok_or_err(unsafe { self.lib.dll.enter_initialization_mode(self.instance) })
     }
 
     pub fn exit_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.container.exit_initialization_mode(self.instance) })
+        Self::ok_or_err(unsafe { self.lib.dll.exit_initialization_mode(self.instance) })
     }
 
-    pub fn get_reals<'fmu>(
+    pub fn get_reals(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Real>, FmuError> {
         self.get(signals, FmiWrapper::get_real)
     }
 
-    pub fn get_integers<'fmu>(
+    pub fn get_integers(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
         self.get(signals, FmiWrapper::get_integer)
     }
 
-    pub fn get_booleans<'fmu>(
+    pub fn get_booleans(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
@@ -270,7 +343,7 @@ impl FmuInstance {
         no_set_fmustate_prior_to_current_point: bool,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.container.do_step(
+            self.lib.dll.do_step(
                 self.instance,
                 current_communication_point,
                 communication_step_size,
@@ -279,7 +352,7 @@ impl FmuInstance {
         })
     }
 
-    fn get<'fmu, T>(
+    fn get<T>(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
         func: unsafe fn(
@@ -294,7 +367,7 @@ impl FmuInstance {
         match unsafe {
             values.set_len(signals.len());
             func(
-                self.container.deref(),
+                self.lib.dll.deref(),
                 self.instance,
                 signals
                     .iter()
@@ -332,7 +405,7 @@ impl FmuInstance {
 
         Self::ok_or_err(unsafe {
             func(
-                self.container.deref(),
+                self.lib.dll.deref(),
                 self.instance,
                 vrs.as_ptr(),
                 len,
@@ -349,9 +422,9 @@ impl FmuInstance {
     }
 }
 
-impl Drop for FmuInstance {
+impl<'fmu> Drop for FmuInstance<'fmu> {
     fn drop(&mut self) {
-        unsafe { self.container.free_instance(self.instance) };
+        unsafe { self.lib.dll.free_instance(self.instance) };
     }
 }
 
@@ -367,22 +440,26 @@ pub fn outputs_to_string<T: Display>(outputs: &HashMap<FmuSignal, T>) -> String 
 
 #[derive(Error, Debug)]
 pub enum FmuLoadError {
-    #[error("Invalid Fmu path")]
+    #[error("Invalid FMU path")]
     InvalidPath(#[from] io::Error),
-    #[error("Invalid Fmu archive")]
+    #[error("Invalid FMU archive")]
     InvalidFmu(#[from] ZipError),
-    #[error("Invalid Fmu model description XML")]
+    #[error("Invalid FMU model description XML")]
     InvalidModelDescription(#[from] quick_xml::DeError),
-    #[error("Error loading Fmu dynamic library")]
+    #[error("FMU does not contain CoSimulation model")]
+    NoCoSimulationModel,
+    #[error("FMU does not contain ModelExchange model")]
+    NoModelExchangeModel,
+    #[error("Error loading FMU dynamic library")]
     DLOpen(#[from] dlopen::Error),
-    #[error("fmi2Instantiate() call failed")]
-    FmuInstantiateFailed,
 }
 
 #[derive(Error, Debug)]
 pub enum FmuError {
-    #[error("Fmu bad function call: {0:?}")]
+    #[error("FMU bad function call: {0:?}")]
     BadFunctionCall(fmi2Status),
-    #[error("Fmu load error: {0}")]
+    #[error("FMU load error: {0}")]
     LoadError(#[from] FmuLoadError),
+    #[error("fmi2Instantiate() call failed")]
+    FmuInstantiateFailed,
 }

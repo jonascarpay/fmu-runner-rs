@@ -9,10 +9,11 @@
 //! use std::{collections::HashMap, path::Path};
 //! use fmu_runner::{Fmu, FmuInstance, fmi2Type};
 //!
-//! let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))?;
+//! let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))?
+//!     .load(fmi2Type::fmi2CoSimulation)?;
 //! let signals = fmu.model_description.map_signals();
 //!
-//! let fmu_cs = FmuInstance::load(&fmu, fmi2Type::fmi2CoSimulation, true)?;
+//! let fmu_cs = FmuInstance::instantiate(&fmu, true)?;
 //!
 //! fmu_cs.setup_experiment(0.0, None, None)?;
 //!
