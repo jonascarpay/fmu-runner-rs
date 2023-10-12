@@ -5,7 +5,10 @@ extern crate dlopen;
 use dlopen::wrapper::WrapperApi;
 use dlopen_derive::WrapperApi;
 
-use libfmi::*;
+use libfmi::{
+    fmi2Boolean, fmi2CallbackFunctions, fmi2Component, fmi2Integer, fmi2Real, fmi2Status,
+    fmi2String, fmi2Type, fmi2ValueReference,
+};
 
 #[derive(WrapperApi)]
 pub struct FmiWrapper {

@@ -20,6 +20,7 @@ use thiserror::Error;
 use zip::result::ZipError;
 
 /// A unpacked FMU with a parsed model description.
+#[derive(Debug)]
 pub struct Fmu {
     #[allow(dead_code)]
     /// Optional tempdir that's used to hold the unpacked FMU.
@@ -90,8 +91,11 @@ impl InstanceNameFactory {
 
 impl Fmu {
     /// Unpack an FMU file to a tempdir and parse it's model description.
-    pub fn unpack(fmu_path: impl Into<std::path::PathBuf>) -> Result<Self, FmuLoadError> {
-        let temp_dir = tempfile::Builder::new().prefix("fmi-runner").tempdir()?;
+    pub fn unpack(fmu_path: impl Into<std::path::PathBuf>) -> Result<Self, FmuUnpackError> {
+        let temp_dir = tempfile::Builder::new()
+            .prefix("fmi-runner")
+            .tempdir()
+            .map_err(FmuUnpackError::NoTempdir)?;
 
         let fmu = Self::unpack_to(fmu_path, temp_dir.path())?;
 
@@ -106,13 +110,19 @@ impl Fmu {
     pub fn unpack_to(
         fmu_path: impl Into<std::path::PathBuf>,
         target_dir: impl Into<std::path::PathBuf>,
-    ) -> Result<Self, FmuLoadError> {
-        let fmu_path = fs::canonicalize(fmu_path.into())?;
+    ) -> Result<Self, FmuUnpackError> {
+        let fmu_path = fs::canonicalize(fmu_path.into()).map_err(FmuUnpackError::InvalidFile)?;
         let target_dir = target_dir.into();
 
-        let zipfile = std::fs::File::open(fmu_path)?;
-        let mut archive = zip::ZipArchive::new(zipfile)?;
-        archive.extract(&target_dir)?;
+        let zipfile = std::fs::File::open(fmu_path).map_err(FmuUnpackError::InvalidFile)?;
+        let mut archive = zip::ZipArchive::new(zipfile).map_err(|e| match e {
+            ZipError::Io(e) => FmuUnpackError::InvalidFile(e),
+            e => FmuUnpackError::InvalidArchive(e),
+        })?;
+        archive.extract(&target_dir).map_err(|e| match e {
+            ZipError::Io(e) => FmuUnpackError::InvalidOutputDir(e),
+            e => FmuUnpackError::InvalidArchive(e),
+        })?;
 
         let model_description = FmiModelDescription::new(&target_dir.join("modelDescription.xml"))?;
 
@@ -439,13 +449,21 @@ pub fn outputs_to_string<T: Display>(outputs: &HashMap<FmuSignal, T>) -> String 
 }
 
 #[derive(Error, Debug)]
-pub enum FmuLoadError {
+pub enum FmuUnpackError {
+    #[error("Failed to create tempdir")]
+    NoTempdir(#[source] io::Error),
     #[error("Invalid FMU path")]
-    InvalidPath(#[from] io::Error),
+    InvalidFile(#[source] io::Error),
+    #[error("Invalid FMU unzip output directory")]
+    InvalidOutputDir(#[source] io::Error),
     #[error("Invalid FMU archive")]
-    InvalidFmu(#[from] ZipError),
+    InvalidArchive(#[from] ZipError),
     #[error("Invalid FMU model description XML")]
     InvalidModelDescription(#[from] quick_xml::DeError),
+}
+
+#[derive(Error, Debug)]
+pub enum FmuLoadError {
     #[error("FMU does not contain CoSimulation model")]
     NoCoSimulationModel,
     #[error("FMU does not contain ModelExchange model")]
@@ -458,8 +476,33 @@ pub enum FmuLoadError {
 pub enum FmuError {
     #[error("FMU bad function call: {0:?}")]
     BadFunctionCall(fmi2Status),
-    #[error("FMU load error: {0}")]
-    LoadError(#[from] FmuLoadError),
+    // #[error("FMU load error: {0}")]
+    // LoadError(#[from] FmuLoadError),
     #[error("fmi2Instantiate() call failed")]
     FmuInstantiateFailed,
+}
+
+// test module
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn print_err(err: impl std::error::Error) {
+        eprintln!("Display:\n{}", err);
+        eprintln!("Debug:\n{:?}", err);
+    }
+
+    #[test]
+    fn test_invalid_file() {
+        let res = Fmu::unpack("dasf:?-()");
+        assert!(matches!(res, Err(FmuUnpackError::InvalidFile { .. })));
+        print_err(res.unwrap_err());
+    }
+
+    #[test]
+    fn test_invalid_output_dir() {
+        let res = Fmu::unpack_to("./tests/fmu/free_fall.fmu", "/z.(),.dasda/dasd");
+        assert!(matches!(res, Err(FmuUnpackError::InvalidOutputDir { .. })));
+        print_err(res.unwrap_err());
+    }
 }

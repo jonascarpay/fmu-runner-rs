@@ -30,7 +30,7 @@
 //! // Get the current height.
 //! let outputs = fmu_cs.get_reals(&[signals["h_m"]])?;
 //! println!("{}", fmu_runner::outputs_to_string(&outputs));
-//! # Ok::<(), fmu_runner::FmuError>(())
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod fmu;
