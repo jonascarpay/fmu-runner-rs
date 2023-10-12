@@ -10,4 +10,18 @@ Generated Rust [fmi-standard](https://fmi-standard.org/) bindings.
 
 This crate also includes a variadic logging handler as inspired by [rust-fmi](https://gitlab.com/jondo2010/rust-fmi).
 
+## Example
+
+```rust
+use libfmi::Fmi2Dll;
+
+let fmi = unsafe { Fmi2Dll::new("../tests/fmu/bouncing_ball/binaries/linux64/bouncing_ball.so") }?;
+let version = unsafe { fmi.fmi2GetVersion() };
+
+println!("FMI version: {:?}", unsafe {
+    std::ffi::CStr::from_ptr(version)
+});
+
+```
+
 <!-- cargo-rdme end -->

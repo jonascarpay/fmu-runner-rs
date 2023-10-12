@@ -1,9 +1,8 @@
-use crate::{
-    model_description::{FmiModelDescription, FmuSignal},
-    wrapper::FmiWrapper,
+use crate::model_description::{FmiModelDescription, FmuSignal};
+use libfmi::{
+    fmi2Boolean, fmi2CallbackFunctions, fmi2Component, fmi2Integer, fmi2Real, fmi2Status, fmi2Type,
+    fmi2ValueReference, Fmi2Dll,
 };
-use dlopen::wrapper::Container;
-use libfmi::*;
 use std::{
     collections::HashMap,
     env,
@@ -33,8 +32,8 @@ pub struct Fmu {
 
 /// An instance of a loaded FMU dynamic library.
 pub struct FmuLibrary {
-    /// The loaded dll container.
-    dll: Container<FmiWrapper>,
+    /// The loaded dll library.
+    fmi: Fmi2Dll,
     /// The simulation type of the loaded dll.
     ///
     /// Note that FMI specifies different libraries for CoSimulation vs ModelExchange
@@ -42,7 +41,7 @@ pub struct FmuLibrary {
     simulation_type: fmi2Type,
     /// The unpacked FMU. The FmuLibrary needs to take ownership of it to keep
     /// the tempdir alive.
-    pub inner: Fmu,
+    pub fmu: Fmu,
     /// Generates unique instance names for starting new FMU instances.
     instance_name_factory: InstanceNameFactory,
 }
@@ -71,7 +70,7 @@ impl Deref for FmuLibrary {
 
     /// Deref to the inner [`Fmu`] type.
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        &self.fmu
     }
 }
 
@@ -189,12 +188,12 @@ impl FmuLibrary {
         fmu: Fmu,
         model_identifier: String,
     ) -> Result<Self, FmuLoadError> {
-        let dll: Container<FmiWrapper> = unsafe { Container::load(lib_path.into()) }?;
+        let fmi = unsafe { Fmi2Dll::new(lib_path.into()) }?;
 
         Ok(Self {
-            dll,
+            fmi,
             simulation_type,
-            inner: fmu,
+            fmu,
             instance_name_factory: InstanceNameFactory::new(model_identifier),
         })
     }
@@ -208,7 +207,7 @@ impl<'fmu> FmuInstance<'fmu> {
         let fmu_guid = &lib.model_description.guid;
 
         let callbacks = Box::<fmi2CallbackFunctions>::new(fmi2CallbackFunctions {
-            logger: Some(logger::callback_logger_handler),
+            logger: Some(libfmi::logger::callback_logger_handler),
             allocateMemory: Some(libc::calloc),
             freeMemory: Some(libc::free),
             stepFinished: None,
@@ -230,7 +229,7 @@ impl<'fmu> FmuInstance<'fmu> {
             .expect("Error building instance_name CString");
 
         let instance = unsafe {
-            lib.dll.instantiate(
+            lib.fmi.fmi2Instantiate(
                 instance_name.as_ptr(),
                 lib.simulation_type,
                 fmu_guid.as_ptr(),
@@ -253,9 +252,10 @@ impl<'fmu> FmuInstance<'fmu> {
     }
 
     pub fn get_types_platform(&self) -> &str {
-        let types_platform = unsafe { std::ffi::CStr::from_ptr(self.lib.dll.get_types_platform()) }
-            .to_str()
-            .unwrap();
+        let types_platform =
+            unsafe { std::ffi::CStr::from_ptr(self.lib.fmi.fmi2GetTypesPlatform()) }
+                .to_str()
+                .unwrap();
         types_platform
     }
 
@@ -272,7 +272,7 @@ impl<'fmu> FmuInstance<'fmu> {
         let category_ptrs: Vec<_> = category_cstr.iter().map(|c| c.as_ptr()).collect();
 
         Self::ok_or_err(unsafe {
-            self.lib.dll.set_debug_logging(
+            self.lib.fmi.fmi2SetDebugLogging(
                 self.instance,
                 logging_on as fmi2Boolean,
                 category_ptrs.len(),
@@ -288,7 +288,7 @@ impl<'fmu> FmuInstance<'fmu> {
         tolerance: Option<f64>,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.lib.dll.setup_experiment(
+            self.lib.fmi.fmi2SetupExperiment(
                 self.instance,
                 tolerance.is_some() as fmi2Boolean,
                 tolerance.unwrap_or(0.0),
@@ -300,50 +300,50 @@ impl<'fmu> FmuInstance<'fmu> {
     }
 
     pub fn enter_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.lib.dll.enter_initialization_mode(self.instance) })
+        Self::ok_or_err(unsafe { self.lib.fmi.fmi2EnterInitializationMode(self.instance) })
     }
 
     pub fn exit_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.lib.dll.exit_initialization_mode(self.instance) })
+        Self::ok_or_err(unsafe { self.lib.fmi.fmi2ExitInitializationMode(self.instance) })
     }
 
     pub fn get_reals(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Real>, FmuError> {
-        self.get(signals, FmiWrapper::get_real)
+        self.get(signals, Fmi2Dll::fmi2GetReal)
     }
 
     pub fn get_integers(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
-        self.get(signals, FmiWrapper::get_integer)
+        self.get(signals, Fmi2Dll::fmi2GetInteger)
     }
 
     pub fn get_booleans(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
-        self.get(signals, FmiWrapper::get_boolean)
+        self.get(signals, Fmi2Dll::fmi2GetBoolean)
     }
 
     pub fn set_reals(&self, value_map: &HashMap<FmuSignal, fmi2Real>) -> Result<(), FmuError> {
-        self.set(value_map, FmiWrapper::set_real)
+        self.set(value_map, Fmi2Dll::fmi2SetReal)
     }
 
     pub fn set_integers(
         &self,
         value_map: &HashMap<FmuSignal, fmi2Integer>,
     ) -> Result<(), FmuError> {
-        self.set(value_map, FmiWrapper::set_integer)
+        self.set(value_map, Fmi2Dll::fmi2SetInteger)
     }
 
     pub fn set_booleans(
         &self,
         value_map: &HashMap<FmuSignal, fmi2Integer>,
     ) -> Result<(), FmuError> {
-        self.set(value_map, FmiWrapper::set_boolean)
+        self.set(value_map, Fmi2Dll::fmi2SetBoolean)
     }
 
     pub fn do_step(
@@ -353,7 +353,7 @@ impl<'fmu> FmuInstance<'fmu> {
         no_set_fmustate_prior_to_current_point: bool,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.lib.dll.do_step(
+            self.lib.fmi.fmi2DoStep(
                 self.instance,
                 current_communication_point,
                 communication_step_size,
@@ -366,7 +366,7 @@ impl<'fmu> FmuInstance<'fmu> {
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
         func: unsafe fn(
-            &FmiWrapper,
+            &Fmi2Dll,
             fmi2Component,
             *const fmi2ValueReference,
             usize,
@@ -377,7 +377,7 @@ impl<'fmu> FmuInstance<'fmu> {
         match unsafe {
             values.set_len(signals.len());
             func(
-                self.lib.dll.deref(),
+                &self.lib.fmi,
                 self.instance,
                 signals
                     .iter()
@@ -397,7 +397,7 @@ impl<'fmu> FmuInstance<'fmu> {
         &self,
         value_map: &HashMap<FmuSignal, T>,
         func: unsafe fn(
-            &FmiWrapper,
+            &Fmi2Dll,
             fmi2Component,
             *const fmi2ValueReference,
             usize,
@@ -415,7 +415,7 @@ impl<'fmu> FmuInstance<'fmu> {
 
         Self::ok_or_err(unsafe {
             func(
-                self.lib.dll.deref(),
+                &self.lib.fmi,
                 self.instance,
                 vrs.as_ptr(),
                 len,
@@ -434,7 +434,7 @@ impl<'fmu> FmuInstance<'fmu> {
 
 impl<'fmu> Drop for FmuInstance<'fmu> {
     fn drop(&mut self) {
-        unsafe { self.lib.dll.free_instance(self.instance) };
+        unsafe { self.lib.fmi.fmi2FreeInstance(self.instance) };
     }
 }
 
@@ -469,7 +469,7 @@ pub enum FmuLoadError {
     #[error("FMU does not contain ModelExchange model")]
     NoModelExchangeModel,
     #[error("Error loading FMU dynamic library")]
-    DLOpen(#[from] dlopen::Error),
+    DLOpen(#[from] libloading::Error),
 }
 
 #[derive(Error, Debug)]

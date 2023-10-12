@@ -13,8 +13,6 @@ readme = "README.md"
 exclude = [".devcontainer", ".gitmodules", "tests"]
 
 [dependencies]
-dlopen = "0.1.8"
-dlopen_derive = "0.1.4"
 libc = { version = "0.2", features = ["align"] }
 log = { version = "0.4", features = ["std", "serde"] }
 quick-xml = { version = "0.29.0", features = [
@@ -24,9 +22,10 @@ quick-xml = { version = "0.29.0", features = [
 ] }
 serde = "1.0.164"
 zip = "0.6.6"
-libfmi = { path = "libfmi", version = "=2.0.4" }
+libfmi = { path = "libfmi", version = "=2.1.4" }
 thiserror = "1.0.49"
 tempfile = "3.8.0"
+libloading = "0.8.1"
 
 [dev-dependencies]
 rand = "0.8.5"

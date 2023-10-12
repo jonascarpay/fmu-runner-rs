@@ -451,16 +451,18 @@ pub type fmi2GetBooleanStatusTYPE = ::std::option::Option<
 pub type fmi2GetStringStatusTYPE = ::std::option::Option<
     unsafe extern "C" fn(c: fmi2Component, s: fmi2StatusKind, value: *mut fmi2String) -> fmi2Status,
 >;
-extern "C" {
-    pub fn fmi2GetTypesPlatform() -> *const ::std::os::raw::c_char;
-    pub fn fmi2GetVersion() -> *const ::std::os::raw::c_char;
-    pub fn fmi2SetDebugLogging(
+extern crate libloading;
+pub struct Fmi2Dll {
+    __library: ::libloading::Library,
+    pub fmi2GetTypesPlatform: unsafe extern "C" fn() -> *const ::std::os::raw::c_char,
+    pub fmi2GetVersion: unsafe extern "C" fn() -> *const ::std::os::raw::c_char,
+    pub fmi2SetDebugLogging: unsafe extern "C" fn(
         c: fmi2Component,
         loggingOn: fmi2Boolean,
         nCategories: usize,
         categories: *const fmi2String,
-    ) -> fmi2Status;
-    pub fn fmi2Instantiate(
+    ) -> fmi2Status,
+    pub fmi2Instantiate: unsafe extern "C" fn(
         instanceName: fmi2String,
         fmuType: fmi2Type,
         fmuGUID: fmi2String,
@@ -468,89 +470,92 @@ extern "C" {
         functions: *const fmi2CallbackFunctions,
         visible: fmi2Boolean,
         loggingOn: fmi2Boolean,
-    ) -> fmi2Component;
-    pub fn fmi2FreeInstance(c: fmi2Component);
-    pub fn fmi2SetupExperiment(
+    ) -> fmi2Component,
+    pub fmi2FreeInstance: unsafe extern "C" fn(c: fmi2Component),
+    pub fmi2SetupExperiment: unsafe extern "C" fn(
         c: fmi2Component,
         toleranceDefined: fmi2Boolean,
         tolerance: fmi2Real,
         startTime: fmi2Real,
         stopTimeDefined: fmi2Boolean,
         stopTime: fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2EnterInitializationMode(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2ExitInitializationMode(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2Terminate(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2Reset(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2GetReal(
+    ) -> fmi2Status,
+    pub fmi2EnterInitializationMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2ExitInitializationMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2Terminate: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2Reset: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2GetReal: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *mut fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2GetInteger(
+    ) -> fmi2Status,
+    pub fmi2GetInteger: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *mut fmi2Integer,
-    ) -> fmi2Status;
-    pub fn fmi2GetBoolean(
+    ) -> fmi2Status,
+    pub fmi2GetBoolean: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *mut fmi2Boolean,
-    ) -> fmi2Status;
-    pub fn fmi2GetString(
+    ) -> fmi2Status,
+    pub fmi2GetString: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *mut fmi2String,
-    ) -> fmi2Status;
-    pub fn fmi2SetReal(
+    ) -> fmi2Status,
+    pub fmi2SetReal: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *const fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2SetInteger(
+    ) -> fmi2Status,
+    pub fmi2SetInteger: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *const fmi2Integer,
-    ) -> fmi2Status;
-    pub fn fmi2SetBoolean(
+    ) -> fmi2Status,
+    pub fmi2SetBoolean: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *const fmi2Boolean,
-    ) -> fmi2Status;
-    pub fn fmi2SetString(
+    ) -> fmi2Status,
+    pub fmi2SetString: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         value: *const fmi2String,
-    ) -> fmi2Status;
-    pub fn fmi2GetFMUstate(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status;
-    pub fn fmi2SetFMUstate(c: fmi2Component, FMUstate: fmi2FMUstate) -> fmi2Status;
-    pub fn fmi2FreeFMUstate(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status;
-    pub fn fmi2SerializedFMUstateSize(
+    ) -> fmi2Status,
+    pub fmi2GetFMUstate:
+        unsafe extern "C" fn(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status,
+    pub fmi2SetFMUstate:
+        unsafe extern "C" fn(c: fmi2Component, FMUstate: fmi2FMUstate) -> fmi2Status,
+    pub fmi2FreeFMUstate:
+        unsafe extern "C" fn(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status,
+    pub fmi2SerializedFMUstateSize: unsafe extern "C" fn(
         c: fmi2Component,
         FMUstate: fmi2FMUstate,
         size: *mut usize,
-    ) -> fmi2Status;
-    pub fn fmi2SerializeFMUstate(
+    ) -> fmi2Status,
+    pub fmi2SerializeFMUstate: unsafe extern "C" fn(
         c: fmi2Component,
         FMUstate: fmi2FMUstate,
         serializedState: *mut fmi2Byte,
         size: usize,
-    ) -> fmi2Status;
-    pub fn fmi2DeSerializeFMUstate(
+    ) -> fmi2Status,
+    pub fmi2DeSerializeFMUstate: unsafe extern "C" fn(
         c: fmi2Component,
         serializedState: *const fmi2Byte,
         size: usize,
         FMUstate: *mut fmi2FMUstate,
-    ) -> fmi2Status;
-    pub fn fmi2GetDirectionalDerivative(
+    ) -> fmi2Status,
+    pub fmi2GetDirectionalDerivative: unsafe extern "C" fn(
         c: fmi2Component,
         vUnknown_ref: *const fmi2ValueReference,
         nUnknown: usize,
@@ -558,76 +563,564 @@ extern "C" {
         nKnown: usize,
         dvKnown: *const fmi2Real,
         dvUnknown: *mut fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2EnterEventMode(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2NewDiscreteStates(c: fmi2Component, fmi2eventInfo: *mut fmi2EventInfo)
-        -> fmi2Status;
-    pub fn fmi2EnterContinuousTimeMode(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2CompletedIntegratorStep(
+    ) -> fmi2Status,
+    pub fmi2EnterEventMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2NewDiscreteStates:
+        unsafe extern "C" fn(c: fmi2Component, fmi2eventInfo: *mut fmi2EventInfo) -> fmi2Status,
+    pub fmi2EnterContinuousTimeMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2CompletedIntegratorStep: unsafe extern "C" fn(
         c: fmi2Component,
         noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
         enterEventMode: *mut fmi2Boolean,
         terminateSimulation: *mut fmi2Boolean,
-    ) -> fmi2Status;
-    pub fn fmi2SetTime(c: fmi2Component, time: fmi2Real) -> fmi2Status;
-    pub fn fmi2SetContinuousStates(c: fmi2Component, x: *const fmi2Real, nx: usize) -> fmi2Status;
-    pub fn fmi2GetDerivatives(
-        c: fmi2Component,
-        derivatives: *mut fmi2Real,
-        nx: usize,
-    ) -> fmi2Status;
-    pub fn fmi2GetEventIndicators(
+    ) -> fmi2Status,
+    pub fmi2SetTime: unsafe extern "C" fn(c: fmi2Component, time: fmi2Real) -> fmi2Status,
+    pub fmi2SetContinuousStates:
+        unsafe extern "C" fn(c: fmi2Component, x: *const fmi2Real, nx: usize) -> fmi2Status,
+    pub fmi2GetDerivatives:
+        unsafe extern "C" fn(c: fmi2Component, derivatives: *mut fmi2Real, nx: usize) -> fmi2Status,
+    pub fmi2GetEventIndicators: unsafe extern "C" fn(
         c: fmi2Component,
         eventIndicators: *mut fmi2Real,
         ni: usize,
-    ) -> fmi2Status;
-    pub fn fmi2GetContinuousStates(c: fmi2Component, x: *mut fmi2Real, nx: usize) -> fmi2Status;
-    pub fn fmi2GetNominalsOfContinuousStates(
-        c: fmi2Component,
-        x_nominal: *mut fmi2Real,
-        nx: usize,
-    ) -> fmi2Status;
-    pub fn fmi2SetRealInputDerivatives(
+    ) -> fmi2Status,
+    pub fmi2GetContinuousStates:
+        unsafe extern "C" fn(c: fmi2Component, x: *mut fmi2Real, nx: usize) -> fmi2Status,
+    pub fmi2GetNominalsOfContinuousStates:
+        unsafe extern "C" fn(c: fmi2Component, x_nominal: *mut fmi2Real, nx: usize) -> fmi2Status,
+    pub fmi2SetRealInputDerivatives: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         order: *const fmi2Integer,
         value: *const fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2GetRealOutputDerivatives(
+    ) -> fmi2Status,
+    pub fmi2GetRealOutputDerivatives: unsafe extern "C" fn(
         c: fmi2Component,
         vr: *const fmi2ValueReference,
         nvr: usize,
         order: *const fmi2Integer,
         value: *mut fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2DoStep(
+    ) -> fmi2Status,
+    pub fmi2DoStep: unsafe extern "C" fn(
         c: fmi2Component,
         currentCommunicationPoint: fmi2Real,
         communicationStepSize: fmi2Real,
         noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
-    ) -> fmi2Status;
-    pub fn fmi2CancelStep(c: fmi2Component) -> fmi2Status;
-    pub fn fmi2GetStatus(c: fmi2Component, s: fmi2StatusKind, value: *mut fmi2Status)
-        -> fmi2Status;
-    pub fn fmi2GetRealStatus(
+    ) -> fmi2Status,
+    pub fmi2CancelStep: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
+    pub fmi2GetStatus: unsafe extern "C" fn(
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2Status,
+    ) -> fmi2Status,
+    pub fmi2GetRealStatus: unsafe extern "C" fn(
         c: fmi2Component,
         s: fmi2StatusKind,
         value: *mut fmi2Real,
-    ) -> fmi2Status;
-    pub fn fmi2GetIntegerStatus(
+    ) -> fmi2Status,
+    pub fmi2GetIntegerStatus: unsafe extern "C" fn(
         c: fmi2Component,
         s: fmi2StatusKind,
         value: *mut fmi2Integer,
-    ) -> fmi2Status;
-    pub fn fmi2GetBooleanStatus(
+    ) -> fmi2Status,
+    pub fmi2GetBooleanStatus: unsafe extern "C" fn(
         c: fmi2Component,
         s: fmi2StatusKind,
         value: *mut fmi2Boolean,
-    ) -> fmi2Status;
-    pub fn fmi2GetStringStatus(
+    ) -> fmi2Status,
+    pub fmi2GetStringStatus: unsafe extern "C" fn(
         c: fmi2Component,
         s: fmi2StatusKind,
         value: *mut fmi2String,
-    ) -> fmi2Status;
+    ) -> fmi2Status,
+}
+impl Fmi2Dll {
+    pub unsafe fn new<P>(path: P) -> Result<Self, ::libloading::Error>
+    where
+        P: AsRef<::std::ffi::OsStr>,
+    {
+        let library = ::libloading::Library::new(path)?;
+        unsafe { Self::from_library(library) }
+    }
+    pub unsafe fn from_library<L>(library: L) -> Result<Self, ::libloading::Error>
+    where
+        L: Into<::libloading::Library>,
+    {
+        let __library = library.into();
+        let fmi2GetTypesPlatform =
+            unsafe { __library.get(b"fmi2GetTypesPlatform\0") }.map(|sym| *sym)?;
+        let fmi2GetVersion = unsafe { __library.get(b"fmi2GetVersion\0") }.map(|sym| *sym)?;
+        let fmi2SetDebugLogging =
+            unsafe { __library.get(b"fmi2SetDebugLogging\0") }.map(|sym| *sym)?;
+        let fmi2Instantiate = unsafe { __library.get(b"fmi2Instantiate\0") }.map(|sym| *sym)?;
+        let fmi2FreeInstance = unsafe { __library.get(b"fmi2FreeInstance\0") }.map(|sym| *sym)?;
+        let fmi2SetupExperiment =
+            unsafe { __library.get(b"fmi2SetupExperiment\0") }.map(|sym| *sym)?;
+        let fmi2EnterInitializationMode =
+            unsafe { __library.get(b"fmi2EnterInitializationMode\0") }.map(|sym| *sym)?;
+        let fmi2ExitInitializationMode =
+            unsafe { __library.get(b"fmi2ExitInitializationMode\0") }.map(|sym| *sym)?;
+        let fmi2Terminate = unsafe { __library.get(b"fmi2Terminate\0") }.map(|sym| *sym)?;
+        let fmi2Reset = unsafe { __library.get(b"fmi2Reset\0") }.map(|sym| *sym)?;
+        let fmi2GetReal = unsafe { __library.get(b"fmi2GetReal\0") }.map(|sym| *sym)?;
+        let fmi2GetInteger = unsafe { __library.get(b"fmi2GetInteger\0") }.map(|sym| *sym)?;
+        let fmi2GetBoolean = unsafe { __library.get(b"fmi2GetBoolean\0") }.map(|sym| *sym)?;
+        let fmi2GetString = unsafe { __library.get(b"fmi2GetString\0") }.map(|sym| *sym)?;
+        let fmi2SetReal = unsafe { __library.get(b"fmi2SetReal\0") }.map(|sym| *sym)?;
+        let fmi2SetInteger = unsafe { __library.get(b"fmi2SetInteger\0") }.map(|sym| *sym)?;
+        let fmi2SetBoolean = unsafe { __library.get(b"fmi2SetBoolean\0") }.map(|sym| *sym)?;
+        let fmi2SetString = unsafe { __library.get(b"fmi2SetString\0") }.map(|sym| *sym)?;
+        let fmi2GetFMUstate = unsafe { __library.get(b"fmi2GetFMUstate\0") }.map(|sym| *sym)?;
+        let fmi2SetFMUstate = unsafe { __library.get(b"fmi2SetFMUstate\0") }.map(|sym| *sym)?;
+        let fmi2FreeFMUstate = unsafe { __library.get(b"fmi2FreeFMUstate\0") }.map(|sym| *sym)?;
+        let fmi2SerializedFMUstateSize =
+            unsafe { __library.get(b"fmi2SerializedFMUstateSize\0") }.map(|sym| *sym)?;
+        let fmi2SerializeFMUstate =
+            unsafe { __library.get(b"fmi2SerializeFMUstate\0") }.map(|sym| *sym)?;
+        let fmi2DeSerializeFMUstate =
+            unsafe { __library.get(b"fmi2DeSerializeFMUstate\0") }.map(|sym| *sym)?;
+        let fmi2GetDirectionalDerivative =
+            unsafe { __library.get(b"fmi2GetDirectionalDerivative\0") }.map(|sym| *sym)?;
+        let fmi2EnterEventMode =
+            unsafe { __library.get(b"fmi2EnterEventMode\0") }.map(|sym| *sym)?;
+        let fmi2NewDiscreteStates =
+            unsafe { __library.get(b"fmi2NewDiscreteStates\0") }.map(|sym| *sym)?;
+        let fmi2EnterContinuousTimeMode =
+            unsafe { __library.get(b"fmi2EnterContinuousTimeMode\0") }.map(|sym| *sym)?;
+        let fmi2CompletedIntegratorStep =
+            unsafe { __library.get(b"fmi2CompletedIntegratorStep\0") }.map(|sym| *sym)?;
+        let fmi2SetTime = unsafe { __library.get(b"fmi2SetTime\0") }.map(|sym| *sym)?;
+        let fmi2SetContinuousStates =
+            unsafe { __library.get(b"fmi2SetContinuousStates\0") }.map(|sym| *sym)?;
+        let fmi2GetDerivatives =
+            unsafe { __library.get(b"fmi2GetDerivatives\0") }.map(|sym| *sym)?;
+        let fmi2GetEventIndicators =
+            unsafe { __library.get(b"fmi2GetEventIndicators\0") }.map(|sym| *sym)?;
+        let fmi2GetContinuousStates =
+            unsafe { __library.get(b"fmi2GetContinuousStates\0") }.map(|sym| *sym)?;
+        let fmi2GetNominalsOfContinuousStates =
+            unsafe { __library.get(b"fmi2GetNominalsOfContinuousStates\0") }.map(|sym| *sym)?;
+        let fmi2SetRealInputDerivatives =
+            unsafe { __library.get(b"fmi2SetRealInputDerivatives\0") }.map(|sym| *sym)?;
+        let fmi2GetRealOutputDerivatives =
+            unsafe { __library.get(b"fmi2GetRealOutputDerivatives\0") }.map(|sym| *sym)?;
+        let fmi2DoStep = unsafe { __library.get(b"fmi2DoStep\0") }.map(|sym| *sym)?;
+        let fmi2CancelStep = unsafe { __library.get(b"fmi2CancelStep\0") }.map(|sym| *sym)?;
+        let fmi2GetStatus = unsafe { __library.get(b"fmi2GetStatus\0") }.map(|sym| *sym)?;
+        let fmi2GetRealStatus = unsafe { __library.get(b"fmi2GetRealStatus\0") }.map(|sym| *sym)?;
+        let fmi2GetIntegerStatus =
+            unsafe { __library.get(b"fmi2GetIntegerStatus\0") }.map(|sym| *sym)?;
+        let fmi2GetBooleanStatus =
+            unsafe { __library.get(b"fmi2GetBooleanStatus\0") }.map(|sym| *sym)?;
+        let fmi2GetStringStatus =
+            unsafe { __library.get(b"fmi2GetStringStatus\0") }.map(|sym| *sym)?;
+        Ok(Fmi2Dll {
+            __library,
+            fmi2GetTypesPlatform,
+            fmi2GetVersion,
+            fmi2SetDebugLogging,
+            fmi2Instantiate,
+            fmi2FreeInstance,
+            fmi2SetupExperiment,
+            fmi2EnterInitializationMode,
+            fmi2ExitInitializationMode,
+            fmi2Terminate,
+            fmi2Reset,
+            fmi2GetReal,
+            fmi2GetInteger,
+            fmi2GetBoolean,
+            fmi2GetString,
+            fmi2SetReal,
+            fmi2SetInteger,
+            fmi2SetBoolean,
+            fmi2SetString,
+            fmi2GetFMUstate,
+            fmi2SetFMUstate,
+            fmi2FreeFMUstate,
+            fmi2SerializedFMUstateSize,
+            fmi2SerializeFMUstate,
+            fmi2DeSerializeFMUstate,
+            fmi2GetDirectionalDerivative,
+            fmi2EnterEventMode,
+            fmi2NewDiscreteStates,
+            fmi2EnterContinuousTimeMode,
+            fmi2CompletedIntegratorStep,
+            fmi2SetTime,
+            fmi2SetContinuousStates,
+            fmi2GetDerivatives,
+            fmi2GetEventIndicators,
+            fmi2GetContinuousStates,
+            fmi2GetNominalsOfContinuousStates,
+            fmi2SetRealInputDerivatives,
+            fmi2GetRealOutputDerivatives,
+            fmi2DoStep,
+            fmi2CancelStep,
+            fmi2GetStatus,
+            fmi2GetRealStatus,
+            fmi2GetIntegerStatus,
+            fmi2GetBooleanStatus,
+            fmi2GetStringStatus,
+        })
+    }
+    pub unsafe fn fmi2GetTypesPlatform(&self) -> *const ::std::os::raw::c_char {
+        unsafe { (self.fmi2GetTypesPlatform)() }
+    }
+    pub unsafe fn fmi2GetVersion(&self) -> *const ::std::os::raw::c_char {
+        unsafe { (self.fmi2GetVersion)() }
+    }
+    pub unsafe fn fmi2SetDebugLogging(
+        &self,
+        c: fmi2Component,
+        loggingOn: fmi2Boolean,
+        nCategories: usize,
+        categories: *const fmi2String,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetDebugLogging)(c, loggingOn, nCategories, categories) }
+    }
+    pub unsafe fn fmi2Instantiate(
+        &self,
+        instanceName: fmi2String,
+        fmuType: fmi2Type,
+        fmuGUID: fmi2String,
+        fmuResourceLocation: fmi2String,
+        functions: *const fmi2CallbackFunctions,
+        visible: fmi2Boolean,
+        loggingOn: fmi2Boolean,
+    ) -> fmi2Component {
+        unsafe {
+            (self.fmi2Instantiate)(
+                instanceName,
+                fmuType,
+                fmuGUID,
+                fmuResourceLocation,
+                functions,
+                visible,
+                loggingOn,
+            )
+        }
+    }
+    pub unsafe fn fmi2FreeInstance(&self, c: fmi2Component) {
+        unsafe { (self.fmi2FreeInstance)(c) }
+    }
+    pub unsafe fn fmi2SetupExperiment(
+        &self,
+        c: fmi2Component,
+        toleranceDefined: fmi2Boolean,
+        tolerance: fmi2Real,
+        startTime: fmi2Real,
+        stopTimeDefined: fmi2Boolean,
+        stopTime: fmi2Real,
+    ) -> fmi2Status {
+        unsafe {
+            (self.fmi2SetupExperiment)(
+                c,
+                toleranceDefined,
+                tolerance,
+                startTime,
+                stopTimeDefined,
+                stopTime,
+            )
+        }
+    }
+    pub unsafe fn fmi2EnterInitializationMode(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2EnterInitializationMode)(c) }
+    }
+    pub unsafe fn fmi2ExitInitializationMode(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2ExitInitializationMode)(c) }
+    }
+    pub unsafe fn fmi2Terminate(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2Terminate)(c) }
+    }
+    pub unsafe fn fmi2Reset(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2Reset)(c) }
+    }
+    pub unsafe fn fmi2GetReal(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *mut fmi2Real,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetReal)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2GetInteger(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *mut fmi2Integer,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetInteger)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2GetBoolean(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *mut fmi2Boolean,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetBoolean)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2GetString(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *mut fmi2String,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetString)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2SetReal(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *const fmi2Real,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetReal)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2SetInteger(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *const fmi2Integer,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetInteger)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2SetBoolean(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *const fmi2Boolean,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetBoolean)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2SetString(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        value: *const fmi2String,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetString)(c, vr, nvr, value) }
+    }
+    pub unsafe fn fmi2GetFMUstate(
+        &self,
+        c: fmi2Component,
+        FMUstate: *mut fmi2FMUstate,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetFMUstate)(c, FMUstate) }
+    }
+    pub unsafe fn fmi2SetFMUstate(&self, c: fmi2Component, FMUstate: fmi2FMUstate) -> fmi2Status {
+        unsafe { (self.fmi2SetFMUstate)(c, FMUstate) }
+    }
+    pub unsafe fn fmi2FreeFMUstate(
+        &self,
+        c: fmi2Component,
+        FMUstate: *mut fmi2FMUstate,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2FreeFMUstate)(c, FMUstate) }
+    }
+    pub unsafe fn fmi2SerializedFMUstateSize(
+        &self,
+        c: fmi2Component,
+        FMUstate: fmi2FMUstate,
+        size: *mut usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SerializedFMUstateSize)(c, FMUstate, size) }
+    }
+    pub unsafe fn fmi2SerializeFMUstate(
+        &self,
+        c: fmi2Component,
+        FMUstate: fmi2FMUstate,
+        serializedState: *mut fmi2Byte,
+        size: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SerializeFMUstate)(c, FMUstate, serializedState, size) }
+    }
+    pub unsafe fn fmi2DeSerializeFMUstate(
+        &self,
+        c: fmi2Component,
+        serializedState: *const fmi2Byte,
+        size: usize,
+        FMUstate: *mut fmi2FMUstate,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2DeSerializeFMUstate)(c, serializedState, size, FMUstate) }
+    }
+    pub unsafe fn fmi2GetDirectionalDerivative(
+        &self,
+        c: fmi2Component,
+        vUnknown_ref: *const fmi2ValueReference,
+        nUnknown: usize,
+        vKnown_ref: *const fmi2ValueReference,
+        nKnown: usize,
+        dvKnown: *const fmi2Real,
+        dvUnknown: *mut fmi2Real,
+    ) -> fmi2Status {
+        unsafe {
+            (self.fmi2GetDirectionalDerivative)(
+                c,
+                vUnknown_ref,
+                nUnknown,
+                vKnown_ref,
+                nKnown,
+                dvKnown,
+                dvUnknown,
+            )
+        }
+    }
+    pub unsafe fn fmi2EnterEventMode(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2EnterEventMode)(c) }
+    }
+    pub unsafe fn fmi2NewDiscreteStates(
+        &self,
+        c: fmi2Component,
+        fmi2eventInfo: *mut fmi2EventInfo,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2NewDiscreteStates)(c, fmi2eventInfo) }
+    }
+    pub unsafe fn fmi2EnterContinuousTimeMode(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2EnterContinuousTimeMode)(c) }
+    }
+    pub unsafe fn fmi2CompletedIntegratorStep(
+        &self,
+        c: fmi2Component,
+        noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
+        enterEventMode: *mut fmi2Boolean,
+        terminateSimulation: *mut fmi2Boolean,
+    ) -> fmi2Status {
+        unsafe {
+            (self.fmi2CompletedIntegratorStep)(
+                c,
+                noSetFMUStatePriorToCurrentPoint,
+                enterEventMode,
+                terminateSimulation,
+            )
+        }
+    }
+    pub unsafe fn fmi2SetTime(&self, c: fmi2Component, time: fmi2Real) -> fmi2Status {
+        unsafe { (self.fmi2SetTime)(c, time) }
+    }
+    pub unsafe fn fmi2SetContinuousStates(
+        &self,
+        c: fmi2Component,
+        x: *const fmi2Real,
+        nx: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetContinuousStates)(c, x, nx) }
+    }
+    pub unsafe fn fmi2GetDerivatives(
+        &self,
+        c: fmi2Component,
+        derivatives: *mut fmi2Real,
+        nx: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetDerivatives)(c, derivatives, nx) }
+    }
+    pub unsafe fn fmi2GetEventIndicators(
+        &self,
+        c: fmi2Component,
+        eventIndicators: *mut fmi2Real,
+        ni: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetEventIndicators)(c, eventIndicators, ni) }
+    }
+    pub unsafe fn fmi2GetContinuousStates(
+        &self,
+        c: fmi2Component,
+        x: *mut fmi2Real,
+        nx: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetContinuousStates)(c, x, nx) }
+    }
+    pub unsafe fn fmi2GetNominalsOfContinuousStates(
+        &self,
+        c: fmi2Component,
+        x_nominal: *mut fmi2Real,
+        nx: usize,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetNominalsOfContinuousStates)(c, x_nominal, nx) }
+    }
+    pub unsafe fn fmi2SetRealInputDerivatives(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        order: *const fmi2Integer,
+        value: *const fmi2Real,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2SetRealInputDerivatives)(c, vr, nvr, order, value) }
+    }
+    pub unsafe fn fmi2GetRealOutputDerivatives(
+        &self,
+        c: fmi2Component,
+        vr: *const fmi2ValueReference,
+        nvr: usize,
+        order: *const fmi2Integer,
+        value: *mut fmi2Real,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetRealOutputDerivatives)(c, vr, nvr, order, value) }
+    }
+    pub unsafe fn fmi2DoStep(
+        &self,
+        c: fmi2Component,
+        currentCommunicationPoint: fmi2Real,
+        communicationStepSize: fmi2Real,
+        noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
+    ) -> fmi2Status {
+        unsafe {
+            (self.fmi2DoStep)(
+                c,
+                currentCommunicationPoint,
+                communicationStepSize,
+                noSetFMUStatePriorToCurrentPoint,
+            )
+        }
+    }
+    pub unsafe fn fmi2CancelStep(&self, c: fmi2Component) -> fmi2Status {
+        unsafe { (self.fmi2CancelStep)(c) }
+    }
+    pub unsafe fn fmi2GetStatus(
+        &self,
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2Status,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetStatus)(c, s, value) }
+    }
+    pub unsafe fn fmi2GetRealStatus(
+        &self,
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2Real,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetRealStatus)(c, s, value) }
+    }
+    pub unsafe fn fmi2GetIntegerStatus(
+        &self,
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2Integer,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetIntegerStatus)(c, s, value) }
+    }
+    pub unsafe fn fmi2GetBooleanStatus(
+        &self,
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2Boolean,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetBooleanStatus)(c, s, value) }
+    }
+    pub unsafe fn fmi2GetStringStatus(
+        &self,
+        c: fmi2Component,
+        s: fmi2StatusKind,
+        value: *mut fmi2String,
+    ) -> fmi2Status {
+        unsafe { (self.fmi2GetStringStatus)(c, s, value) }
+    }
 }

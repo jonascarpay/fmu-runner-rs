@@ -11,4 +11,6 @@ bindgen \
     --rustified-enum="fmi2Status" \
     --rustified-enum="fmi2StatusKind" \
     --rustified-enum="fmi2Type" \
+    --dynamic-loading="Fmi2Dll" \
+    --dynamic-link-require-all \
     fmi-standard/headers/fmi2Functions.h > src/fmi.rs

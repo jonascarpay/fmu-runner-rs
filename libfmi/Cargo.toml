@@ -1,6 +1,6 @@
 [package]
 name = "libfmi"
-version = "2.0.4"
+version = "2.1.4"
 edition = "2021"
 authors = ["Nikita Rushmanov <rush3nik@gmail.com>", "Marvin Struijk"]
 description = "Generated C bindings for the FMI standard."
@@ -10,15 +10,12 @@ license = "MIT OR Apache-2.0"
 keywords = ["model", "ode", "modelica", "fmu", "fmi"]
 categories = ["science", "simulation", "external-ffi-bindings"]
 readme = "README.md"
-exclude = [
-    "fmi-standard",
-    "!fmi-standard/headers/*.h",
-    "bindgen.sh"
-]
+exclude = ["fmi-standard", "!fmi-standard/headers/*.h", "bindgen.sh"]
 
 [build-dependencies]
 # bindgen = "0.68.1"
 cc = "1.0.79"
 
 [dependencies]
+libloading = "0.8.1"
 log = "0.4.20"
