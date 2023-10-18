@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `Fmu::variables()` method to easily get a reference to the signal map.
 
+### Fixed
+
+- Fixed `undefined symbol: fmi2EnterEventMode` error when loading FMU's that don't
+    contain a ModelExchange model.
+
 ### Changed
 
 - `FmuInstance` is now generic over a `Borrow<FmuLibrary>` to allow the user to

@@ -454,186 +454,289 @@ pub type fmi2GetStringStatusTYPE = ::std::option::Option<
 extern crate libloading;
 pub struct Fmi2Dll {
     __library: ::libloading::Library,
-    pub fmi2GetTypesPlatform: unsafe extern "C" fn() -> *const ::std::os::raw::c_char,
-    pub fmi2GetVersion: unsafe extern "C" fn() -> *const ::std::os::raw::c_char,
-    pub fmi2SetDebugLogging: unsafe extern "C" fn(
-        c: fmi2Component,
-        loggingOn: fmi2Boolean,
-        nCategories: usize,
-        categories: *const fmi2String,
-    ) -> fmi2Status,
-    pub fmi2Instantiate: unsafe extern "C" fn(
-        instanceName: fmi2String,
-        fmuType: fmi2Type,
-        fmuGUID: fmi2String,
-        fmuResourceLocation: fmi2String,
-        functions: *const fmi2CallbackFunctions,
-        visible: fmi2Boolean,
-        loggingOn: fmi2Boolean,
-    ) -> fmi2Component,
-    pub fmi2FreeInstance: unsafe extern "C" fn(c: fmi2Component),
-    pub fmi2SetupExperiment: unsafe extern "C" fn(
-        c: fmi2Component,
-        toleranceDefined: fmi2Boolean,
-        tolerance: fmi2Real,
-        startTime: fmi2Real,
-        stopTimeDefined: fmi2Boolean,
-        stopTime: fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2EnterInitializationMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2ExitInitializationMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2Terminate: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2Reset: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2GetReal: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *mut fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2GetInteger: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *mut fmi2Integer,
-    ) -> fmi2Status,
-    pub fmi2GetBoolean: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *mut fmi2Boolean,
-    ) -> fmi2Status,
-    pub fmi2GetString: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *mut fmi2String,
-    ) -> fmi2Status,
-    pub fmi2SetReal: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *const fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2SetInteger: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *const fmi2Integer,
-    ) -> fmi2Status,
-    pub fmi2SetBoolean: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *const fmi2Boolean,
-    ) -> fmi2Status,
-    pub fmi2SetString: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        value: *const fmi2String,
-    ) -> fmi2Status,
-    pub fmi2GetFMUstate:
+    pub fmi2GetTypesPlatform:
+        Result<unsafe extern "C" fn() -> *const ::std::os::raw::c_char, ::libloading::Error>,
+    pub fmi2GetVersion:
+        Result<unsafe extern "C" fn() -> *const ::std::os::raw::c_char, ::libloading::Error>,
+    pub fmi2SetDebugLogging: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            loggingOn: fmi2Boolean,
+            nCategories: usize,
+            categories: *const fmi2String,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2Instantiate: Result<
+        unsafe extern "C" fn(
+            instanceName: fmi2String,
+            fmuType: fmi2Type,
+            fmuGUID: fmi2String,
+            fmuResourceLocation: fmi2String,
+            functions: *const fmi2CallbackFunctions,
+            visible: fmi2Boolean,
+            loggingOn: fmi2Boolean,
+        ) -> fmi2Component,
+        ::libloading::Error,
+    >,
+    pub fmi2FreeInstance: Result<unsafe extern "C" fn(c: fmi2Component), ::libloading::Error>,
+    pub fmi2SetupExperiment: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            toleranceDefined: fmi2Boolean,
+            tolerance: fmi2Real,
+            startTime: fmi2Real,
+            stopTimeDefined: fmi2Boolean,
+            stopTime: fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2EnterInitializationMode:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2ExitInitializationMode:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2Terminate:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2Reset:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2GetReal: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *mut fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetInteger: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *mut fmi2Integer,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetBoolean: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *mut fmi2Boolean,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetString: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *mut fmi2String,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetReal: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *const fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetInteger: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *const fmi2Integer,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetBoolean: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *const fmi2Boolean,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetString: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            value: *const fmi2String,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetFMUstate: Result<
         unsafe extern "C" fn(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status,
-    pub fmi2SetFMUstate:
+        ::libloading::Error,
+    >,
+    pub fmi2SetFMUstate: Result<
         unsafe extern "C" fn(c: fmi2Component, FMUstate: fmi2FMUstate) -> fmi2Status,
-    pub fmi2FreeFMUstate:
+        ::libloading::Error,
+    >,
+    pub fmi2FreeFMUstate: Result<
         unsafe extern "C" fn(c: fmi2Component, FMUstate: *mut fmi2FMUstate) -> fmi2Status,
-    pub fmi2SerializedFMUstateSize: unsafe extern "C" fn(
-        c: fmi2Component,
-        FMUstate: fmi2FMUstate,
-        size: *mut usize,
-    ) -> fmi2Status,
-    pub fmi2SerializeFMUstate: unsafe extern "C" fn(
-        c: fmi2Component,
-        FMUstate: fmi2FMUstate,
-        serializedState: *mut fmi2Byte,
-        size: usize,
-    ) -> fmi2Status,
-    pub fmi2DeSerializeFMUstate: unsafe extern "C" fn(
-        c: fmi2Component,
-        serializedState: *const fmi2Byte,
-        size: usize,
-        FMUstate: *mut fmi2FMUstate,
-    ) -> fmi2Status,
-    pub fmi2GetDirectionalDerivative: unsafe extern "C" fn(
-        c: fmi2Component,
-        vUnknown_ref: *const fmi2ValueReference,
-        nUnknown: usize,
-        vKnown_ref: *const fmi2ValueReference,
-        nKnown: usize,
-        dvKnown: *const fmi2Real,
-        dvUnknown: *mut fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2EnterEventMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2NewDiscreteStates:
+        ::libloading::Error,
+    >,
+    pub fmi2SerializedFMUstateSize: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            FMUstate: fmi2FMUstate,
+            size: *mut usize,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SerializeFMUstate: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            FMUstate: fmi2FMUstate,
+            serializedState: *mut fmi2Byte,
+            size: usize,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2DeSerializeFMUstate: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            serializedState: *const fmi2Byte,
+            size: usize,
+            FMUstate: *mut fmi2FMUstate,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetDirectionalDerivative: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vUnknown_ref: *const fmi2ValueReference,
+            nUnknown: usize,
+            vKnown_ref: *const fmi2ValueReference,
+            nKnown: usize,
+            dvKnown: *const fmi2Real,
+            dvUnknown: *mut fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2EnterEventMode:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2NewDiscreteStates: Result<
         unsafe extern "C" fn(c: fmi2Component, fmi2eventInfo: *mut fmi2EventInfo) -> fmi2Status,
-    pub fmi2EnterContinuousTimeMode: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2CompletedIntegratorStep: unsafe extern "C" fn(
-        c: fmi2Component,
-        noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
-        enterEventMode: *mut fmi2Boolean,
-        terminateSimulation: *mut fmi2Boolean,
-    ) -> fmi2Status,
-    pub fmi2SetTime: unsafe extern "C" fn(c: fmi2Component, time: fmi2Real) -> fmi2Status,
-    pub fmi2SetContinuousStates:
+        ::libloading::Error,
+    >,
+    pub fmi2EnterContinuousTimeMode:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2CompletedIntegratorStep: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
+            enterEventMode: *mut fmi2Boolean,
+            terminateSimulation: *mut fmi2Boolean,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetTime: Result<
+        unsafe extern "C" fn(c: fmi2Component, time: fmi2Real) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetContinuousStates: Result<
         unsafe extern "C" fn(c: fmi2Component, x: *const fmi2Real, nx: usize) -> fmi2Status,
-    pub fmi2GetDerivatives:
+        ::libloading::Error,
+    >,
+    pub fmi2GetDerivatives: Result<
         unsafe extern "C" fn(c: fmi2Component, derivatives: *mut fmi2Real, nx: usize) -> fmi2Status,
-    pub fmi2GetEventIndicators: unsafe extern "C" fn(
-        c: fmi2Component,
-        eventIndicators: *mut fmi2Real,
-        ni: usize,
-    ) -> fmi2Status,
-    pub fmi2GetContinuousStates:
+        ::libloading::Error,
+    >,
+    pub fmi2GetEventIndicators: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            eventIndicators: *mut fmi2Real,
+            ni: usize,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetContinuousStates: Result<
         unsafe extern "C" fn(c: fmi2Component, x: *mut fmi2Real, nx: usize) -> fmi2Status,
-    pub fmi2GetNominalsOfContinuousStates:
+        ::libloading::Error,
+    >,
+    pub fmi2GetNominalsOfContinuousStates: Result<
         unsafe extern "C" fn(c: fmi2Component, x_nominal: *mut fmi2Real, nx: usize) -> fmi2Status,
-    pub fmi2SetRealInputDerivatives: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        order: *const fmi2Integer,
-        value: *const fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2GetRealOutputDerivatives: unsafe extern "C" fn(
-        c: fmi2Component,
-        vr: *const fmi2ValueReference,
-        nvr: usize,
-        order: *const fmi2Integer,
-        value: *mut fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2DoStep: unsafe extern "C" fn(
-        c: fmi2Component,
-        currentCommunicationPoint: fmi2Real,
-        communicationStepSize: fmi2Real,
-        noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
-    ) -> fmi2Status,
-    pub fmi2CancelStep: unsafe extern "C" fn(c: fmi2Component) -> fmi2Status,
-    pub fmi2GetStatus: unsafe extern "C" fn(
-        c: fmi2Component,
-        s: fmi2StatusKind,
-        value: *mut fmi2Status,
-    ) -> fmi2Status,
-    pub fmi2GetRealStatus: unsafe extern "C" fn(
-        c: fmi2Component,
-        s: fmi2StatusKind,
-        value: *mut fmi2Real,
-    ) -> fmi2Status,
-    pub fmi2GetIntegerStatus: unsafe extern "C" fn(
-        c: fmi2Component,
-        s: fmi2StatusKind,
-        value: *mut fmi2Integer,
-    ) -> fmi2Status,
-    pub fmi2GetBooleanStatus: unsafe extern "C" fn(
-        c: fmi2Component,
-        s: fmi2StatusKind,
-        value: *mut fmi2Boolean,
-    ) -> fmi2Status,
-    pub fmi2GetStringStatus: unsafe extern "C" fn(
-        c: fmi2Component,
-        s: fmi2StatusKind,
-        value: *mut fmi2String,
-    ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2SetRealInputDerivatives: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            order: *const fmi2Integer,
+            value: *const fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetRealOutputDerivatives: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            vr: *const fmi2ValueReference,
+            nvr: usize,
+            order: *const fmi2Integer,
+            value: *mut fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2DoStep: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            currentCommunicationPoint: fmi2Real,
+            communicationStepSize: fmi2Real,
+            noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2CancelStep:
+        Result<unsafe extern "C" fn(c: fmi2Component) -> fmi2Status, ::libloading::Error>,
+    pub fmi2GetStatus: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            s: fmi2StatusKind,
+            value: *mut fmi2Status,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetRealStatus: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            s: fmi2StatusKind,
+            value: *mut fmi2Real,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetIntegerStatus: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            s: fmi2StatusKind,
+            value: *mut fmi2Integer,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetBooleanStatus: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            s: fmi2StatusKind,
+            value: *mut fmi2Boolean,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
+    pub fmi2GetStringStatus: Result<
+        unsafe extern "C" fn(
+            c: fmi2Component,
+            s: fmi2StatusKind,
+            value: *mut fmi2String,
+        ) -> fmi2Status,
+        ::libloading::Error,
+    >,
 }
 impl Fmi2Dll {
     pub unsafe fn new<P>(path: P) -> Result<Self, ::libloading::Error>
@@ -649,72 +752,70 @@ impl Fmi2Dll {
     {
         let __library = library.into();
         let fmi2GetTypesPlatform =
-            unsafe { __library.get(b"fmi2GetTypesPlatform\0") }.map(|sym| *sym)?;
-        let fmi2GetVersion = unsafe { __library.get(b"fmi2GetVersion\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetTypesPlatform\0") }.map(|sym| *sym);
+        let fmi2GetVersion = unsafe { __library.get(b"fmi2GetVersion\0") }.map(|sym| *sym);
         let fmi2SetDebugLogging =
-            unsafe { __library.get(b"fmi2SetDebugLogging\0") }.map(|sym| *sym)?;
-        let fmi2Instantiate = unsafe { __library.get(b"fmi2Instantiate\0") }.map(|sym| *sym)?;
-        let fmi2FreeInstance = unsafe { __library.get(b"fmi2FreeInstance\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SetDebugLogging\0") }.map(|sym| *sym);
+        let fmi2Instantiate = unsafe { __library.get(b"fmi2Instantiate\0") }.map(|sym| *sym);
+        let fmi2FreeInstance = unsafe { __library.get(b"fmi2FreeInstance\0") }.map(|sym| *sym);
         let fmi2SetupExperiment =
-            unsafe { __library.get(b"fmi2SetupExperiment\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SetupExperiment\0") }.map(|sym| *sym);
         let fmi2EnterInitializationMode =
-            unsafe { __library.get(b"fmi2EnterInitializationMode\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2EnterInitializationMode\0") }.map(|sym| *sym);
         let fmi2ExitInitializationMode =
-            unsafe { __library.get(b"fmi2ExitInitializationMode\0") }.map(|sym| *sym)?;
-        let fmi2Terminate = unsafe { __library.get(b"fmi2Terminate\0") }.map(|sym| *sym)?;
-        let fmi2Reset = unsafe { __library.get(b"fmi2Reset\0") }.map(|sym| *sym)?;
-        let fmi2GetReal = unsafe { __library.get(b"fmi2GetReal\0") }.map(|sym| *sym)?;
-        let fmi2GetInteger = unsafe { __library.get(b"fmi2GetInteger\0") }.map(|sym| *sym)?;
-        let fmi2GetBoolean = unsafe { __library.get(b"fmi2GetBoolean\0") }.map(|sym| *sym)?;
-        let fmi2GetString = unsafe { __library.get(b"fmi2GetString\0") }.map(|sym| *sym)?;
-        let fmi2SetReal = unsafe { __library.get(b"fmi2SetReal\0") }.map(|sym| *sym)?;
-        let fmi2SetInteger = unsafe { __library.get(b"fmi2SetInteger\0") }.map(|sym| *sym)?;
-        let fmi2SetBoolean = unsafe { __library.get(b"fmi2SetBoolean\0") }.map(|sym| *sym)?;
-        let fmi2SetString = unsafe { __library.get(b"fmi2SetString\0") }.map(|sym| *sym)?;
-        let fmi2GetFMUstate = unsafe { __library.get(b"fmi2GetFMUstate\0") }.map(|sym| *sym)?;
-        let fmi2SetFMUstate = unsafe { __library.get(b"fmi2SetFMUstate\0") }.map(|sym| *sym)?;
-        let fmi2FreeFMUstate = unsafe { __library.get(b"fmi2FreeFMUstate\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2ExitInitializationMode\0") }.map(|sym| *sym);
+        let fmi2Terminate = unsafe { __library.get(b"fmi2Terminate\0") }.map(|sym| *sym);
+        let fmi2Reset = unsafe { __library.get(b"fmi2Reset\0") }.map(|sym| *sym);
+        let fmi2GetReal = unsafe { __library.get(b"fmi2GetReal\0") }.map(|sym| *sym);
+        let fmi2GetInteger = unsafe { __library.get(b"fmi2GetInteger\0") }.map(|sym| *sym);
+        let fmi2GetBoolean = unsafe { __library.get(b"fmi2GetBoolean\0") }.map(|sym| *sym);
+        let fmi2GetString = unsafe { __library.get(b"fmi2GetString\0") }.map(|sym| *sym);
+        let fmi2SetReal = unsafe { __library.get(b"fmi2SetReal\0") }.map(|sym| *sym);
+        let fmi2SetInteger = unsafe { __library.get(b"fmi2SetInteger\0") }.map(|sym| *sym);
+        let fmi2SetBoolean = unsafe { __library.get(b"fmi2SetBoolean\0") }.map(|sym| *sym);
+        let fmi2SetString = unsafe { __library.get(b"fmi2SetString\0") }.map(|sym| *sym);
+        let fmi2GetFMUstate = unsafe { __library.get(b"fmi2GetFMUstate\0") }.map(|sym| *sym);
+        let fmi2SetFMUstate = unsafe { __library.get(b"fmi2SetFMUstate\0") }.map(|sym| *sym);
+        let fmi2FreeFMUstate = unsafe { __library.get(b"fmi2FreeFMUstate\0") }.map(|sym| *sym);
         let fmi2SerializedFMUstateSize =
-            unsafe { __library.get(b"fmi2SerializedFMUstateSize\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SerializedFMUstateSize\0") }.map(|sym| *sym);
         let fmi2SerializeFMUstate =
-            unsafe { __library.get(b"fmi2SerializeFMUstate\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SerializeFMUstate\0") }.map(|sym| *sym);
         let fmi2DeSerializeFMUstate =
-            unsafe { __library.get(b"fmi2DeSerializeFMUstate\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2DeSerializeFMUstate\0") }.map(|sym| *sym);
         let fmi2GetDirectionalDerivative =
-            unsafe { __library.get(b"fmi2GetDirectionalDerivative\0") }.map(|sym| *sym)?;
-        let fmi2EnterEventMode =
-            unsafe { __library.get(b"fmi2EnterEventMode\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetDirectionalDerivative\0") }.map(|sym| *sym);
+        let fmi2EnterEventMode = unsafe { __library.get(b"fmi2EnterEventMode\0") }.map(|sym| *sym);
         let fmi2NewDiscreteStates =
-            unsafe { __library.get(b"fmi2NewDiscreteStates\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2NewDiscreteStates\0") }.map(|sym| *sym);
         let fmi2EnterContinuousTimeMode =
-            unsafe { __library.get(b"fmi2EnterContinuousTimeMode\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2EnterContinuousTimeMode\0") }.map(|sym| *sym);
         let fmi2CompletedIntegratorStep =
-            unsafe { __library.get(b"fmi2CompletedIntegratorStep\0") }.map(|sym| *sym)?;
-        let fmi2SetTime = unsafe { __library.get(b"fmi2SetTime\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2CompletedIntegratorStep\0") }.map(|sym| *sym);
+        let fmi2SetTime = unsafe { __library.get(b"fmi2SetTime\0") }.map(|sym| *sym);
         let fmi2SetContinuousStates =
-            unsafe { __library.get(b"fmi2SetContinuousStates\0") }.map(|sym| *sym)?;
-        let fmi2GetDerivatives =
-            unsafe { __library.get(b"fmi2GetDerivatives\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SetContinuousStates\0") }.map(|sym| *sym);
+        let fmi2GetDerivatives = unsafe { __library.get(b"fmi2GetDerivatives\0") }.map(|sym| *sym);
         let fmi2GetEventIndicators =
-            unsafe { __library.get(b"fmi2GetEventIndicators\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetEventIndicators\0") }.map(|sym| *sym);
         let fmi2GetContinuousStates =
-            unsafe { __library.get(b"fmi2GetContinuousStates\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetContinuousStates\0") }.map(|sym| *sym);
         let fmi2GetNominalsOfContinuousStates =
-            unsafe { __library.get(b"fmi2GetNominalsOfContinuousStates\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetNominalsOfContinuousStates\0") }.map(|sym| *sym);
         let fmi2SetRealInputDerivatives =
-            unsafe { __library.get(b"fmi2SetRealInputDerivatives\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2SetRealInputDerivatives\0") }.map(|sym| *sym);
         let fmi2GetRealOutputDerivatives =
-            unsafe { __library.get(b"fmi2GetRealOutputDerivatives\0") }.map(|sym| *sym)?;
-        let fmi2DoStep = unsafe { __library.get(b"fmi2DoStep\0") }.map(|sym| *sym)?;
-        let fmi2CancelStep = unsafe { __library.get(b"fmi2CancelStep\0") }.map(|sym| *sym)?;
-        let fmi2GetStatus = unsafe { __library.get(b"fmi2GetStatus\0") }.map(|sym| *sym)?;
-        let fmi2GetRealStatus = unsafe { __library.get(b"fmi2GetRealStatus\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetRealOutputDerivatives\0") }.map(|sym| *sym);
+        let fmi2DoStep = unsafe { __library.get(b"fmi2DoStep\0") }.map(|sym| *sym);
+        let fmi2CancelStep = unsafe { __library.get(b"fmi2CancelStep\0") }.map(|sym| *sym);
+        let fmi2GetStatus = unsafe { __library.get(b"fmi2GetStatus\0") }.map(|sym| *sym);
+        let fmi2GetRealStatus = unsafe { __library.get(b"fmi2GetRealStatus\0") }.map(|sym| *sym);
         let fmi2GetIntegerStatus =
-            unsafe { __library.get(b"fmi2GetIntegerStatus\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetIntegerStatus\0") }.map(|sym| *sym);
         let fmi2GetBooleanStatus =
-            unsafe { __library.get(b"fmi2GetBooleanStatus\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetBooleanStatus\0") }.map(|sym| *sym);
         let fmi2GetStringStatus =
-            unsafe { __library.get(b"fmi2GetStringStatus\0") }.map(|sym| *sym)?;
+            unsafe { __library.get(b"fmi2GetStringStatus\0") }.map(|sym| *sym);
         Ok(Fmi2Dll {
             __library,
             fmi2GetTypesPlatform,
@@ -764,10 +865,20 @@ impl Fmi2Dll {
         })
     }
     pub unsafe fn fmi2GetTypesPlatform(&self) -> *const ::std::os::raw::c_char {
-        unsafe { (self.fmi2GetTypesPlatform)() }
+        unsafe {
+            (self
+                .fmi2GetTypesPlatform
+                .as_ref()
+                .expect("Expected function, got error."))()
+        }
     }
     pub unsafe fn fmi2GetVersion(&self) -> *const ::std::os::raw::c_char {
-        unsafe { (self.fmi2GetVersion)() }
+        unsafe {
+            (self
+                .fmi2GetVersion
+                .as_ref()
+                .expect("Expected function, got error."))()
+        }
     }
     pub unsafe fn fmi2SetDebugLogging(
         &self,
@@ -776,7 +887,14 @@ impl Fmi2Dll {
         nCategories: usize,
         categories: *const fmi2String,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetDebugLogging)(c, loggingOn, nCategories, categories) }
+        unsafe {
+            (self
+                .fmi2SetDebugLogging
+                .as_ref()
+                .expect("Expected function, got error."))(
+                c, loggingOn, nCategories, categories
+            )
+        }
     }
     pub unsafe fn fmi2Instantiate(
         &self,
@@ -789,7 +907,10 @@ impl Fmi2Dll {
         loggingOn: fmi2Boolean,
     ) -> fmi2Component {
         unsafe {
-            (self.fmi2Instantiate)(
+            (self
+                .fmi2Instantiate
+                .as_ref()
+                .expect("Expected function, got error."))(
                 instanceName,
                 fmuType,
                 fmuGUID,
@@ -801,7 +922,12 @@ impl Fmi2Dll {
         }
     }
     pub unsafe fn fmi2FreeInstance(&self, c: fmi2Component) {
-        unsafe { (self.fmi2FreeInstance)(c) }
+        unsafe {
+            (self
+                .fmi2FreeInstance
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2SetupExperiment(
         &self,
@@ -813,7 +939,10 @@ impl Fmi2Dll {
         stopTime: fmi2Real,
     ) -> fmi2Status {
         unsafe {
-            (self.fmi2SetupExperiment)(
+            (self
+                .fmi2SetupExperiment
+                .as_ref()
+                .expect("Expected function, got error."))(
                 c,
                 toleranceDefined,
                 tolerance,
@@ -824,16 +953,36 @@ impl Fmi2Dll {
         }
     }
     pub unsafe fn fmi2EnterInitializationMode(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2EnterInitializationMode)(c) }
+        unsafe {
+            (self
+                .fmi2EnterInitializationMode
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2ExitInitializationMode(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2ExitInitializationMode)(c) }
+        unsafe {
+            (self
+                .fmi2ExitInitializationMode
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2Terminate(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2Terminate)(c) }
+        unsafe {
+            (self
+                .fmi2Terminate
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2Reset(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2Reset)(c) }
+        unsafe {
+            (self
+                .fmi2Reset
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2GetReal(
         &self,
@@ -842,7 +991,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *mut fmi2Real,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetReal)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2GetReal
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2GetInteger(
         &self,
@@ -851,7 +1005,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *mut fmi2Integer,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetInteger)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2GetInteger
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2GetBoolean(
         &self,
@@ -860,7 +1019,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *mut fmi2Boolean,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetBoolean)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2GetBoolean
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2GetString(
         &self,
@@ -869,7 +1033,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *mut fmi2String,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetString)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2GetString
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2SetReal(
         &self,
@@ -878,7 +1047,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *const fmi2Real,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetReal)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2SetReal
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2SetInteger(
         &self,
@@ -887,7 +1061,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *const fmi2Integer,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetInteger)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2SetInteger
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2SetBoolean(
         &self,
@@ -896,7 +1075,12 @@ impl Fmi2Dll {
         nvr: usize,
         value: *const fmi2Boolean,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetBoolean)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2SetBoolean
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2SetString(
         &self,
@@ -905,24 +1089,44 @@ impl Fmi2Dll {
         nvr: usize,
         value: *const fmi2String,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetString)(c, vr, nvr, value) }
+        unsafe {
+            (self
+                .fmi2SetString
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, value)
+        }
     }
     pub unsafe fn fmi2GetFMUstate(
         &self,
         c: fmi2Component,
         FMUstate: *mut fmi2FMUstate,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetFMUstate)(c, FMUstate) }
+        unsafe {
+            (self
+                .fmi2GetFMUstate
+                .as_ref()
+                .expect("Expected function, got error."))(c, FMUstate)
+        }
     }
     pub unsafe fn fmi2SetFMUstate(&self, c: fmi2Component, FMUstate: fmi2FMUstate) -> fmi2Status {
-        unsafe { (self.fmi2SetFMUstate)(c, FMUstate) }
+        unsafe {
+            (self
+                .fmi2SetFMUstate
+                .as_ref()
+                .expect("Expected function, got error."))(c, FMUstate)
+        }
     }
     pub unsafe fn fmi2FreeFMUstate(
         &self,
         c: fmi2Component,
         FMUstate: *mut fmi2FMUstate,
     ) -> fmi2Status {
-        unsafe { (self.fmi2FreeFMUstate)(c, FMUstate) }
+        unsafe {
+            (self
+                .fmi2FreeFMUstate
+                .as_ref()
+                .expect("Expected function, got error."))(c, FMUstate)
+        }
     }
     pub unsafe fn fmi2SerializedFMUstateSize(
         &self,
@@ -930,7 +1134,12 @@ impl Fmi2Dll {
         FMUstate: fmi2FMUstate,
         size: *mut usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SerializedFMUstateSize)(c, FMUstate, size) }
+        unsafe {
+            (self
+                .fmi2SerializedFMUstateSize
+                .as_ref()
+                .expect("Expected function, got error."))(c, FMUstate, size)
+        }
     }
     pub unsafe fn fmi2SerializeFMUstate(
         &self,
@@ -939,7 +1148,14 @@ impl Fmi2Dll {
         serializedState: *mut fmi2Byte,
         size: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SerializeFMUstate)(c, FMUstate, serializedState, size) }
+        unsafe {
+            (self
+                .fmi2SerializeFMUstate
+                .as_ref()
+                .expect("Expected function, got error."))(
+                c, FMUstate, serializedState, size
+            )
+        }
     }
     pub unsafe fn fmi2DeSerializeFMUstate(
         &self,
@@ -948,7 +1164,14 @@ impl Fmi2Dll {
         size: usize,
         FMUstate: *mut fmi2FMUstate,
     ) -> fmi2Status {
-        unsafe { (self.fmi2DeSerializeFMUstate)(c, serializedState, size, FMUstate) }
+        unsafe {
+            (self
+                .fmi2DeSerializeFMUstate
+                .as_ref()
+                .expect("Expected function, got error."))(
+                c, serializedState, size, FMUstate
+            )
+        }
     }
     pub unsafe fn fmi2GetDirectionalDerivative(
         &self,
@@ -961,7 +1184,10 @@ impl Fmi2Dll {
         dvUnknown: *mut fmi2Real,
     ) -> fmi2Status {
         unsafe {
-            (self.fmi2GetDirectionalDerivative)(
+            (self
+                .fmi2GetDirectionalDerivative
+                .as_ref()
+                .expect("Expected function, got error."))(
                 c,
                 vUnknown_ref,
                 nUnknown,
@@ -973,17 +1199,32 @@ impl Fmi2Dll {
         }
     }
     pub unsafe fn fmi2EnterEventMode(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2EnterEventMode)(c) }
+        unsafe {
+            (self
+                .fmi2EnterEventMode
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2NewDiscreteStates(
         &self,
         c: fmi2Component,
         fmi2eventInfo: *mut fmi2EventInfo,
     ) -> fmi2Status {
-        unsafe { (self.fmi2NewDiscreteStates)(c, fmi2eventInfo) }
+        unsafe {
+            (self
+                .fmi2NewDiscreteStates
+                .as_ref()
+                .expect("Expected function, got error."))(c, fmi2eventInfo)
+        }
     }
     pub unsafe fn fmi2EnterContinuousTimeMode(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2EnterContinuousTimeMode)(c) }
+        unsafe {
+            (self
+                .fmi2EnterContinuousTimeMode
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2CompletedIntegratorStep(
         &self,
@@ -993,7 +1234,10 @@ impl Fmi2Dll {
         terminateSimulation: *mut fmi2Boolean,
     ) -> fmi2Status {
         unsafe {
-            (self.fmi2CompletedIntegratorStep)(
+            (self
+                .fmi2CompletedIntegratorStep
+                .as_ref()
+                .expect("Expected function, got error."))(
                 c,
                 noSetFMUStatePriorToCurrentPoint,
                 enterEventMode,
@@ -1002,7 +1246,12 @@ impl Fmi2Dll {
         }
     }
     pub unsafe fn fmi2SetTime(&self, c: fmi2Component, time: fmi2Real) -> fmi2Status {
-        unsafe { (self.fmi2SetTime)(c, time) }
+        unsafe {
+            (self
+                .fmi2SetTime
+                .as_ref()
+                .expect("Expected function, got error."))(c, time)
+        }
     }
     pub unsafe fn fmi2SetContinuousStates(
         &self,
@@ -1010,7 +1259,12 @@ impl Fmi2Dll {
         x: *const fmi2Real,
         nx: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetContinuousStates)(c, x, nx) }
+        unsafe {
+            (self
+                .fmi2SetContinuousStates
+                .as_ref()
+                .expect("Expected function, got error."))(c, x, nx)
+        }
     }
     pub unsafe fn fmi2GetDerivatives(
         &self,
@@ -1018,7 +1272,12 @@ impl Fmi2Dll {
         derivatives: *mut fmi2Real,
         nx: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetDerivatives)(c, derivatives, nx) }
+        unsafe {
+            (self
+                .fmi2GetDerivatives
+                .as_ref()
+                .expect("Expected function, got error."))(c, derivatives, nx)
+        }
     }
     pub unsafe fn fmi2GetEventIndicators(
         &self,
@@ -1026,7 +1285,12 @@ impl Fmi2Dll {
         eventIndicators: *mut fmi2Real,
         ni: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetEventIndicators)(c, eventIndicators, ni) }
+        unsafe {
+            (self
+                .fmi2GetEventIndicators
+                .as_ref()
+                .expect("Expected function, got error."))(c, eventIndicators, ni)
+        }
     }
     pub unsafe fn fmi2GetContinuousStates(
         &self,
@@ -1034,7 +1298,12 @@ impl Fmi2Dll {
         x: *mut fmi2Real,
         nx: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetContinuousStates)(c, x, nx) }
+        unsafe {
+            (self
+                .fmi2GetContinuousStates
+                .as_ref()
+                .expect("Expected function, got error."))(c, x, nx)
+        }
     }
     pub unsafe fn fmi2GetNominalsOfContinuousStates(
         &self,
@@ -1042,7 +1311,12 @@ impl Fmi2Dll {
         x_nominal: *mut fmi2Real,
         nx: usize,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetNominalsOfContinuousStates)(c, x_nominal, nx) }
+        unsafe {
+            (self
+                .fmi2GetNominalsOfContinuousStates
+                .as_ref()
+                .expect("Expected function, got error."))(c, x_nominal, nx)
+        }
     }
     pub unsafe fn fmi2SetRealInputDerivatives(
         &self,
@@ -1052,7 +1326,12 @@ impl Fmi2Dll {
         order: *const fmi2Integer,
         value: *const fmi2Real,
     ) -> fmi2Status {
-        unsafe { (self.fmi2SetRealInputDerivatives)(c, vr, nvr, order, value) }
+        unsafe {
+            (self
+                .fmi2SetRealInputDerivatives
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, order, value)
+        }
     }
     pub unsafe fn fmi2GetRealOutputDerivatives(
         &self,
@@ -1062,7 +1341,12 @@ impl Fmi2Dll {
         order: *const fmi2Integer,
         value: *mut fmi2Real,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetRealOutputDerivatives)(c, vr, nvr, order, value) }
+        unsafe {
+            (self
+                .fmi2GetRealOutputDerivatives
+                .as_ref()
+                .expect("Expected function, got error."))(c, vr, nvr, order, value)
+        }
     }
     pub unsafe fn fmi2DoStep(
         &self,
@@ -1072,7 +1356,10 @@ impl Fmi2Dll {
         noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
     ) -> fmi2Status {
         unsafe {
-            (self.fmi2DoStep)(
+            (self
+                .fmi2DoStep
+                .as_ref()
+                .expect("Expected function, got error."))(
                 c,
                 currentCommunicationPoint,
                 communicationStepSize,
@@ -1081,7 +1368,12 @@ impl Fmi2Dll {
         }
     }
     pub unsafe fn fmi2CancelStep(&self, c: fmi2Component) -> fmi2Status {
-        unsafe { (self.fmi2CancelStep)(c) }
+        unsafe {
+            (self
+                .fmi2CancelStep
+                .as_ref()
+                .expect("Expected function, got error."))(c)
+        }
     }
     pub unsafe fn fmi2GetStatus(
         &self,
@@ -1089,7 +1381,12 @@ impl Fmi2Dll {
         s: fmi2StatusKind,
         value: *mut fmi2Status,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetStatus)(c, s, value) }
+        unsafe {
+            (self
+                .fmi2GetStatus
+                .as_ref()
+                .expect("Expected function, got error."))(c, s, value)
+        }
     }
     pub unsafe fn fmi2GetRealStatus(
         &self,
@@ -1097,7 +1394,12 @@ impl Fmi2Dll {
         s: fmi2StatusKind,
         value: *mut fmi2Real,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetRealStatus)(c, s, value) }
+        unsafe {
+            (self
+                .fmi2GetRealStatus
+                .as_ref()
+                .expect("Expected function, got error."))(c, s, value)
+        }
     }
     pub unsafe fn fmi2GetIntegerStatus(
         &self,
@@ -1105,7 +1407,12 @@ impl Fmi2Dll {
         s: fmi2StatusKind,
         value: *mut fmi2Integer,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetIntegerStatus)(c, s, value) }
+        unsafe {
+            (self
+                .fmi2GetIntegerStatus
+                .as_ref()
+                .expect("Expected function, got error."))(c, s, value)
+        }
     }
     pub unsafe fn fmi2GetBooleanStatus(
         &self,
@@ -1113,7 +1420,12 @@ impl Fmi2Dll {
         s: fmi2StatusKind,
         value: *mut fmi2Boolean,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetBooleanStatus)(c, s, value) }
+        unsafe {
+            (self
+                .fmi2GetBooleanStatus
+                .as_ref()
+                .expect("Expected function, got error."))(c, s, value)
+        }
     }
     pub unsafe fn fmi2GetStringStatus(
         &self,
@@ -1121,6 +1433,11 @@ impl Fmi2Dll {
         s: fmi2StatusKind,
         value: *mut fmi2String,
     ) -> fmi2Status {
-        unsafe { (self.fmi2GetStringStatus)(c, s, value) }
+        unsafe {
+            (self
+                .fmi2GetStringStatus
+                .as_ref()
+                .expect("Expected function, got error."))(c, s, value)
+        }
     }
 }
