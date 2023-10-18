@@ -4,6 +4,7 @@ use libfmi::{
     fmi2ValueReference, Fmi2Dll,
 };
 use std::{
+    borrow::Borrow,
     collections::HashMap,
     env,
     ffi::CString,
@@ -47,9 +48,15 @@ pub struct FmuLibrary {
 }
 
 /// A simulation "instance", ready to execute.
-pub struct FmuInstance<'fmu> {
+pub struct FmuInstance<C: Borrow<FmuLibrary>> {
     /// The loaded dll library.
-    lib: &'fmu FmuLibrary,
+    ///
+    /// This is generic behind the [`Borrow`] trait so that the user can pass in
+    /// a reference or different Cell types such as [`Arc`].
+    ///
+    /// The presence of this enforces that the [`FmuLibrary`] will outlive the
+    /// [`FmuInstance`].
+    lib: C,
     /// A pointer to the "instance" we created by calling [`fmi2Instantiate`].
     instance: *mut os::raw::c_void,
     #[allow(dead_code)]
@@ -68,7 +75,7 @@ struct InstanceNameFactory {
 impl Deref for FmuLibrary {
     type Target = Fmu;
 
-    /// Deref to the inner [`Fmu`] type.
+    /// Borrow to the inner [`Fmu`] type.
     fn deref(&self) -> &Self::Target {
         &self.fmu
     }
@@ -199,12 +206,12 @@ impl FmuLibrary {
     }
 }
 
-unsafe impl<'fmu> Send for FmuInstance<'fmu> {}
+unsafe impl<C: Borrow<FmuLibrary>> Send for FmuInstance<C> {}
 
-impl<'fmu> FmuInstance<'fmu> {
+impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
     /// Call `fmi2Instantiate()` on the FMU library to start a new simulation instance.
-    pub fn instantiate(lib: &'fmu FmuLibrary, logging_on: bool) -> Result<Self, FmuError> {
-        let fmu_guid = &lib.model_description.guid;
+    pub fn instantiate(lib: C, logging_on: bool) -> Result<Self, FmuError> {
+        let fmu_guid = &lib.borrow().model_description.guid;
 
         let callbacks = Box::<fmi2CallbackFunctions>::new(fmi2CallbackFunctions {
             logger: Some(libfmi::logger::callback_logger_handler),
@@ -216,8 +223,13 @@ impl<'fmu> FmuInstance<'fmu> {
 
         let fmu_guid = CString::new(fmu_guid.as_bytes()).expect("Error building fmu_guid CString");
 
-        let resource_location =
-            "file://".to_owned() + lib.unpacked_dir.join("resources").to_str().unwrap();
+        let resource_location = "file://".to_owned()
+            + lib
+                .borrow()
+                .unpacked_dir
+                .join("resources")
+                .to_str()
+                .unwrap();
         let resource_location =
             CString::new(resource_location).expect("Error building resource_location CString");
 
@@ -225,13 +237,13 @@ impl<'fmu> FmuInstance<'fmu> {
         let logging_on = logging_on as fmi2Boolean;
 
         // Generate a unique instance name to support multiple simulations at once.
-        let instance_name = CString::new(lib.instance_name_factory.next())
+        let instance_name = CString::new(lib.borrow().instance_name_factory.next())
             .expect("Error building instance_name CString");
 
         let instance = unsafe {
-            lib.fmi.fmi2Instantiate(
+            lib.borrow().fmi.fmi2Instantiate(
                 instance_name.as_ptr(),
-                lib.simulation_type,
+                lib.borrow().simulation_type,
                 fmu_guid.as_ptr(),
                 resource_location.as_ptr(),
                 &*callbacks,
@@ -253,7 +265,7 @@ impl<'fmu> FmuInstance<'fmu> {
 
     pub fn get_types_platform(&self) -> &str {
         let types_platform =
-            unsafe { std::ffi::CStr::from_ptr(self.lib.fmi.fmi2GetTypesPlatform()) }
+            unsafe { std::ffi::CStr::from_ptr(self.lib.borrow().fmi.fmi2GetTypesPlatform()) }
                 .to_str()
                 .unwrap();
         types_platform
@@ -272,7 +284,7 @@ impl<'fmu> FmuInstance<'fmu> {
         let category_ptrs: Vec<_> = category_cstr.iter().map(|c| c.as_ptr()).collect();
 
         Self::ok_or_err(unsafe {
-            self.lib.fmi.fmi2SetDebugLogging(
+            self.lib.borrow().fmi.fmi2SetDebugLogging(
                 self.instance,
                 logging_on as fmi2Boolean,
                 category_ptrs.len(),
@@ -288,7 +300,7 @@ impl<'fmu> FmuInstance<'fmu> {
         tolerance: Option<f64>,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.lib.fmi.fmi2SetupExperiment(
+            self.lib.borrow().fmi.fmi2SetupExperiment(
                 self.instance,
                 tolerance.is_some() as fmi2Boolean,
                 tolerance.unwrap_or(0.0),
@@ -300,28 +312,38 @@ impl<'fmu> FmuInstance<'fmu> {
     }
 
     pub fn enter_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.lib.fmi.fmi2EnterInitializationMode(self.instance) })
+        Self::ok_or_err(unsafe {
+            self.lib
+                .borrow()
+                .fmi
+                .fmi2EnterInitializationMode(self.instance)
+        })
     }
 
     pub fn exit_initialization_mode(&self) -> Result<(), FmuError> {
-        Self::ok_or_err(unsafe { self.lib.fmi.fmi2ExitInitializationMode(self.instance) })
+        Self::ok_or_err(unsafe {
+            self.lib
+                .borrow()
+                .fmi
+                .fmi2ExitInitializationMode(self.instance)
+        })
     }
 
-    pub fn get_reals(
+    pub fn get_reals<'fmu>(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Real>, FmuError> {
         self.get(signals, Fmi2Dll::fmi2GetReal)
     }
 
-    pub fn get_integers(
+    pub fn get_integers<'fmu>(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
         self.get(signals, Fmi2Dll::fmi2GetInteger)
     }
 
-    pub fn get_booleans(
+    pub fn get_booleans<'fmu>(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
     ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
@@ -353,7 +375,7 @@ impl<'fmu> FmuInstance<'fmu> {
         no_set_fmustate_prior_to_current_point: bool,
     ) -> Result<(), FmuError> {
         Self::ok_or_err(unsafe {
-            self.lib.fmi.fmi2DoStep(
+            self.lib.borrow().fmi.fmi2DoStep(
                 self.instance,
                 current_communication_point,
                 communication_step_size,
@@ -362,7 +384,7 @@ impl<'fmu> FmuInstance<'fmu> {
         })
     }
 
-    fn get<T>(
+    fn get<'fmu, T>(
         &'fmu self,
         signals: &[FmuSignal<'fmu>],
         func: unsafe fn(
@@ -377,7 +399,7 @@ impl<'fmu> FmuInstance<'fmu> {
         match unsafe {
             values.set_len(signals.len());
             func(
-                &self.lib.fmi,
+                &self.lib.borrow().fmi,
                 self.instance,
                 signals
                     .iter()
@@ -415,7 +437,7 @@ impl<'fmu> FmuInstance<'fmu> {
 
         Self::ok_or_err(unsafe {
             func(
-                &self.lib.fmi,
+                &self.lib.borrow().fmi,
                 self.instance,
                 vrs.as_ptr(),
                 len,
@@ -432,9 +454,9 @@ impl<'fmu> FmuInstance<'fmu> {
     }
 }
 
-impl<'fmu> Drop for FmuInstance<'fmu> {
+impl<C: Borrow<FmuLibrary>> Drop for FmuInstance<C> {
     fn drop(&mut self) {
-        unsafe { self.lib.fmi.fmi2FreeInstance(self.instance) };
+        unsafe { self.lib.borrow().fmi.fmi2FreeInstance(self.instance) };
     }
 }
 
