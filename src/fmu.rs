@@ -1,4 +1,4 @@
-use crate::model_description::{FmiModelDescription, FmuSignal};
+use crate::model_description::{FmiModelDescription, ScalarVariable};
 use libfmi::{
     fmi2Boolean, fmi2CallbackFunctions, fmi2Component, fmi2Integer, fmi2Real, fmi2Status, fmi2Type,
     fmi2ValueReference, Fmi2Dll,
@@ -56,7 +56,7 @@ pub struct FmuInstance<C: Borrow<FmuLibrary>> {
     ///
     /// The presence of this enforces that the [`FmuLibrary`] will outlive the
     /// [`FmuInstance`].
-    lib: C,
+    pub lib: C,
     /// A pointer to the "instance" we created by calling [`fmi2Instantiate`].
     instance: *mut os::raw::c_void,
     #[allow(dead_code)]
@@ -185,6 +185,10 @@ impl Fmu {
         lib_path.set_extension(lib_type);
 
         FmuLibrary::load(lib_path, simulation_type, self, model_identifier)
+    }
+
+    pub fn variables(&self) -> &HashMap<String, ScalarVariable> {
+        &self.model_description.model_variables.scalar_variable
     }
 }
 
@@ -331,39 +335,42 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
 
     pub fn get_reals<'fmu>(
         &'fmu self,
-        signals: &[FmuSignal<'fmu>],
-    ) -> Result<HashMap<FmuSignal, fmi2Real>, FmuError> {
+        signals: &[&'fmu ScalarVariable],
+    ) -> Result<HashMap<&ScalarVariable, fmi2Real>, FmuError> {
         self.get(signals, Fmi2Dll::fmi2GetReal)
     }
 
     pub fn get_integers<'fmu>(
         &'fmu self,
-        signals: &[FmuSignal<'fmu>],
-    ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
+        signals: &[&'fmu ScalarVariable],
+    ) -> Result<HashMap<&ScalarVariable, fmi2Integer>, FmuError> {
         self.get(signals, Fmi2Dll::fmi2GetInteger)
     }
 
     pub fn get_booleans<'fmu>(
         &'fmu self,
-        signals: &[FmuSignal<'fmu>],
-    ) -> Result<HashMap<FmuSignal, fmi2Integer>, FmuError> {
+        signals: &[&'fmu ScalarVariable],
+    ) -> Result<HashMap<&ScalarVariable, fmi2Integer>, FmuError> {
         self.get(signals, Fmi2Dll::fmi2GetBoolean)
     }
 
-    pub fn set_reals(&self, value_map: &HashMap<FmuSignal, fmi2Real>) -> Result<(), FmuError> {
+    pub fn set_reals(
+        &self,
+        value_map: &HashMap<&ScalarVariable, fmi2Real>,
+    ) -> Result<(), FmuError> {
         self.set(value_map, Fmi2Dll::fmi2SetReal)
     }
 
     pub fn set_integers(
         &self,
-        value_map: &HashMap<FmuSignal, fmi2Integer>,
+        value_map: &HashMap<&ScalarVariable, fmi2Integer>,
     ) -> Result<(), FmuError> {
         self.set(value_map, Fmi2Dll::fmi2SetInteger)
     }
 
     pub fn set_booleans(
         &self,
-        value_map: &HashMap<FmuSignal, fmi2Integer>,
+        value_map: &HashMap<&ScalarVariable, fmi2Integer>,
     ) -> Result<(), FmuError> {
         self.set(value_map, Fmi2Dll::fmi2SetBoolean)
     }
@@ -386,7 +393,7 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
 
     fn get<'fmu, T>(
         &'fmu self,
-        signals: &[FmuSignal<'fmu>],
+        signals: &[&'fmu ScalarVariable],
         func: unsafe fn(
             &Fmi2Dll,
             fmi2Component,
@@ -394,7 +401,7 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
             usize,
             *mut T,
         ) -> fmi2Status,
-    ) -> Result<HashMap<FmuSignal, T>, FmuError> {
+    ) -> Result<HashMap<&'fmu ScalarVariable, T>, FmuError> {
         let mut values = Vec::<T>::with_capacity(signals.len());
         match unsafe {
             values.set_len(signals.len());
@@ -403,7 +410,7 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
                 self.instance,
                 signals
                     .iter()
-                    .map(|s| s.sv.value_reference)
+                    .map(|s| s.value_reference)
                     .collect::<Vec<_>>()
                     .as_ptr(),
                 signals.len(),
@@ -417,7 +424,7 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
 
     fn set<T: Copy>(
         &self,
-        value_map: &HashMap<FmuSignal, T>,
+        value_map: &HashMap<&ScalarVariable, T>,
         func: unsafe fn(
             &Fmi2Dll,
             fmi2Component,
@@ -431,7 +438,7 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
         let mut values = Vec::<T>::with_capacity(len);
 
         for (signal, value) in value_map.iter() {
-            vrs.push(signal.sv.value_reference);
+            vrs.push(signal.value_reference);
             values.push(*value);
         }
 
@@ -460,11 +467,11 @@ impl<C: Borrow<FmuLibrary>> Drop for FmuInstance<C> {
     }
 }
 
-pub fn outputs_to_string<T: Display>(outputs: &HashMap<FmuSignal, T>) -> String {
+pub fn outputs_to_string<T: Display>(outputs: &HashMap<&ScalarVariable, T>) -> String {
     let mut s = String::new();
 
     for (signal, value) in outputs.iter() {
-        s.push_str(&format!("{}: {:.3} | ", signal.sv.name, value));
+        s.push_str(&format!("{}: {:.3} | ", signal.name, value));
     }
 
     s

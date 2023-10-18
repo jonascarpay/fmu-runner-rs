@@ -10,7 +10,7 @@ fn test_bouncing_ball() {
         .load(fmi2Type::fmi2CoSimulation)
         .unwrap();
 
-    let signals = fmu.model_description.map_signals();
+    let signals = fmu.variables();
     println!("signals: {:?}", signals);
 
     {
@@ -19,14 +19,14 @@ fn test_bouncing_ball() {
         fmu_cs.setup_experiment(0.0, None, None).unwrap();
 
         fmu_cs
-            .set_reals(&HashMap::from([(signals["h_start"], 10.0)]))
+            .set_reals(&HashMap::from([(&signals["h_start"], 10.0)]))
             .unwrap();
 
         // Enter initialization
         fmu_cs.enter_initialization_mode().unwrap();
 
         // Retrieve modified start values
-        let values = fmu_cs.get_reals(&[signals["h_start"]]).unwrap();
+        let values = fmu_cs.get_reals(&[&signals["h_start"]]).unwrap();
         assert_eq!(values[&signals["h_start"]], 10.0);
 
         // Exit initialization mode
@@ -34,7 +34,7 @@ fn test_bouncing_ball() {
 
         fmu_cs.do_step(0.0, 1.0, true).unwrap();
 
-        let outputs = fmu_cs.get_reals(&[signals["h_m"]]).unwrap();
+        let outputs = fmu_cs.get_reals(&[&signals["h_m"]]).unwrap();
         println!("{}", outputs_to_string(&outputs));
     }
 }
@@ -46,7 +46,7 @@ fn test_point_mass() {
         .load(fmi2Type::fmi2CoSimulation)
         .unwrap();
 
-    let signals = fmu.model_description.map_signals();
+    let signals = fmu.variables();
     println!("signals: {:?}", signals);
 
     {
@@ -56,8 +56,8 @@ fn test_point_mass() {
 
         fmu_cs
             .set_reals(&HashMap::from([
-                (signals["mass_kg"], 100.0),
-                (signals["length_m"], 10.0),
+                (&signals["mass_kg"], 100.0),
+                (&signals["length_m"], 10.0),
             ]))
             .unwrap();
 
@@ -66,18 +66,18 @@ fn test_point_mass() {
 
         fmu_cs.do_step(0.0, 1.0, true).unwrap();
         let outputs = fmu_cs
-            .get_reals(&[signals["theta_rad"], signals["mass_kg"]])
+            .get_reals(&[&signals["theta_rad"], &signals["mass_kg"]])
             .unwrap();
         println!("{}", outputs_to_string(&outputs));
 
         // Change mass between steps.
         fmu_cs
-            .set_reals(&HashMap::from([(signals["mass_kg"], 10.0)]))
+            .set_reals(&HashMap::from([(&signals["mass_kg"], 10.0)]))
             .unwrap();
 
         fmu_cs.do_step(1.0, 1.0, true).unwrap();
         let outputs = fmu_cs
-            .get_reals(&[signals["theta_rad"], signals["mass_kg"]])
+            .get_reals(&[&signals["theta_rad"], &signals["mass_kg"]])
             .unwrap();
         println!("{}", outputs_to_string(&outputs));
 
@@ -92,7 +92,7 @@ fn test_two_instances() {
         .load(fmi2Type::fmi2CoSimulation)
         .unwrap();
 
-    let signals = fmu.model_description.map_signals();
+    let signals = fmu.variables();
 
     {
         let fmu_cs_0 = FmuInstance::instantiate(&fmu, true).unwrap();
@@ -109,8 +109,8 @@ fn test_two_instances() {
         fmu_cs_0.do_step(0.0, 1.0, true).unwrap();
         fmu_cs_1.do_step(0.0, 1.1, true).unwrap();
 
-        let outputs_0 = fmu_cs_0.get_reals(&[signals["y_m"]]).unwrap();
-        let outputs_1 = fmu_cs_1.get_reals(&[signals["y_m"]]).unwrap();
+        let outputs_0 = fmu_cs_0.get_reals(&[&signals["y_m"]]).unwrap();
+        let outputs_1 = fmu_cs_1.get_reals(&[&signals["y_m"]]).unwrap();
 
         println!("outputs_0: {}", outputs_to_string(&outputs_0));
         println!("outputs_1: {}", outputs_to_string(&outputs_1));
@@ -137,42 +137,23 @@ fn test_box() {
             .unwrap(),
     );
 
-    let signals = fmu.model_description.map_signals();
-    // println!("signals: {:?}", signals);
-
     {
         let fmu_cs = FmuInstance::instantiate(fmu, true).unwrap();
 
+        let signals = fmu_cs.lib.variables();
+
         fmu_cs.setup_experiment(0.0, None, None).unwrap();
 
-        // fmu_cs
-        //     .set_reals(&HashMap::from([
-        //         (signals["mass_kg"], 100.0),
-        //         (signals["length_m"], 10.0),
-        //     ]))
-        //     .unwrap();
+        fmu_cs.enter_initialization_mode().unwrap();
+        fmu_cs.exit_initialization_mode().unwrap();
 
-        // fmu_cs.enter_initialization_mode().unwrap();
-        // fmu_cs.exit_initialization_mode().unwrap();
+        fmu_cs.do_step(0.0, 1.0, true).unwrap();
 
-        // fmu_cs.do_step(0.0, 1.0, true).unwrap();
-        // let outputs = fmu_cs
-        //     .get_reals(&[signals["theta_rad"], signals["mass_kg"]])
-        //     .unwrap();
-        // println!("{}", outputs_to_string(&outputs));
+        let outputs = fmu_cs.get_reals(&[&signals["y_m"]]).unwrap();
 
-        // // Change mass between steps.
-        // fmu_cs
-        //     .set_reals(&HashMap::from([(signals["mass_kg"], 10.0)]))
-        //     .unwrap();
+        println!("outputs: {}", outputs_to_string(&outputs));
 
-        // fmu_cs.do_step(1.0, 1.0, true).unwrap();
-        // let outputs = fmu_cs
-        //     .get_reals(&[signals["theta_rad"], signals["mass_kg"]])
-        //     .unwrap();
-        // println!("{}", outputs_to_string(&outputs));
-
-        // assert_eq!(outputs[&signals["mass_kg"]], 10.0);
+        assert!(about_right(outputs[&signals["y_m"]], solve_free_fall(1.0)));
     }
 }
 
@@ -212,7 +193,6 @@ fn test_parallel_instances() {
             .load(fmi2Type::fmi2CoSimulation)
             .unwrap(),
     );
-    // let signals = Arc::new(fmu.model_description.map_signals());
 
     use std::sync::{Arc, Barrier};
     use std::thread;
@@ -231,6 +211,7 @@ fn test_parallel_instances() {
             barrier.wait();
 
             let fmu_cs = FmuInstance::instantiate(fmu, true).unwrap();
+            let signals = fmu_cs.lib.variables();
 
             fmu_cs.setup_experiment(0.0, None, None).unwrap();
             fmu_cs.enter_initialization_mode().unwrap();
@@ -243,12 +224,12 @@ fn test_parallel_instances() {
                 sim_time += step_size;
             }
 
-            // let outputs = fmu_cs.get_reals(&[signals["y_m"]]).unwrap();
+            let outputs = fmu_cs.get_reals(&[&signals["y_m"]]).unwrap();
 
-            // assert!(about_right(
-            //     outputs[&signals["y_m"]],
-            //     solve_free_fall(sim_time)
-            // ));
+            assert!(about_right(
+                outputs[&signals["y_m"]],
+                solve_free_fall(sim_time)
+            ));
         }));
     }
 

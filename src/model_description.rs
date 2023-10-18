@@ -70,7 +70,7 @@ pub struct Real {
     declared_type: Option<String>,
     #[serde(rename = "@start")]
     start: Option<f64>,
-    #[serde(rename = "@valueReference")]
+    #[serde(rename = "@derivative")]
     derivative: Option<usize>,
     #[serde(rename = "@reinit")]
     reinit: Option<bool>,
@@ -94,26 +94,77 @@ pub struct Integer {
     start: Option<i64>,
 }
 
-#[derive(Debug, Default, Deserialize)]
-#[serde(default, rename_all = "PascalCase")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum SignalType {
+    Real(Real),
+    Integer(Integer),
+    Boolean(Boolean),
+    String,
+    Enumeration,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Causality {
+    Parameter,
+    CalculatedParameter,
+    Input,
+    Output,
+    Local,
+    Independent,
+}
+
+impl Default for Causality {
+    fn default() -> Self {
+        Causality::Local
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Variability {
+    Constant,
+    Fixed,
+    Tunable,
+    Discrete,
+    Continuous,
+}
+
+impl Default for Variability {
+    fn default() -> Self {
+        Variability::Continuous
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Initial {
+    Exact,
+    Approx,
+    Calculated,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct ScalarVariable {
     #[serde(rename = "@name")]
     pub name: String,
     #[serde(rename = "@valueReference")]
     pub value_reference: ::std::os::raw::c_uint,
-    #[serde(rename = "@description")]
+    #[serde(default, rename = "@description")]
     pub description: String,
-    #[serde(rename = "@causality")]
-    pub causality: String,
-    #[serde(rename = "@variability")]
-    pub variability: String,
+    #[serde(default, rename = "@causality")]
+    pub causality: Causality,
+    #[serde(default, rename = "@variability")]
+    pub variability: Variability,
     #[serde(rename = "@initial")]
-    pub initial: String,
-    // #[serde(rename = "@canHandleMultipleSetPerTimeInstant")]
-    // pub can_handle_multiple_set_per_time_instant: bool,
-    pub real: Option<Real>,
-    pub integer: Option<Integer>,
-    pub boolean: Option<Boolean>,
+    pub initial: Option<Initial>,
+    #[serde(rename = "@canHandleMultipleSetPerTimeInstant")]
+    pub can_handle_multiple_set_per_time_instant: Option<bool>,
+    pub annotations: Option<()>,
+    #[serde(rename = "$value")]
+    pub signal_type: SignalType,
 }
 
 impl PartialEq for ScalarVariable {
@@ -283,42 +334,6 @@ impl FmiModelDescription {
         let text = fs::read_to_string(path).unwrap();
         from_str(&text)
     }
-
-    pub fn map_signals(&self) -> HashMap<String, FmuSignal> {
-        let mut signal_list: HashMap<String, FmuSignal> = HashMap::new();
-        for (name, sv) in &self.model_variables.scalar_variable {
-            let signal_type: FMISignalType;
-            if sv.real.is_some() {
-                signal_type = FMISignalType::Real;
-            } else if sv.integer.is_some() {
-                signal_type = FMISignalType::Integer;
-            } else if sv.boolean.is_some() {
-                signal_type = FMISignalType::Boolean;
-            } else {
-                signal_type = FMISignalType::String;
-            }
-
-            signal_list.insert(name.clone(), FmuSignal { signal_type, sv });
-        }
-        signal_list
-    }
-}
-
-#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub enum FMISignalType {
-    Real,
-    Integer,
-    Boolean,
-    // Char,
-    String,
-    // Byte
-    Enum,
-}
-
-#[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub struct FmuSignal<'fmu> {
-    pub signal_type: FMISignalType,
-    pub(crate) sv: &'fmu ScalarVariable,
 }
 
 // test module
@@ -338,5 +353,6 @@ mod tests {
         println!("{:?}", md.description);
         println!("{:?}", md.default_experiment);
         println!("{:?}", md.model_variables);
+        println!("{:?}", md.model_variables.scalar_variable);
     }
 }

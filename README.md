@@ -20,14 +20,14 @@ use fmu_runner::{Fmu, FmuInstance, fmi2Type};
 
 let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))?
     .load(fmi2Type::fmi2CoSimulation)?;
-let signals = fmu.model_description.map_signals();
 
 let fmu_cs = FmuInstance::instantiate(&fmu, true)?;
+let signals = fmu_cs.lib.variables();
 
 fmu_cs.setup_experiment(0.0, None, None)?;
 
 // Set initial height to 10m.
-fmu_cs.set_reals(&HashMap::from([(signals["h_start"], 10.0)]))?;
+fmu_cs.set_reals(&HashMap::from([(&signals["h_start"], 10.0)]))?;
 
 // Initialize model.
 fmu_cs.enter_initialization_mode()?;
@@ -37,7 +37,7 @@ fmu_cs.exit_initialization_mode()?;
 fmu_cs.do_step(0.0, 1.0, true)?;
 
 // Get the current height.
-let outputs = fmu_cs.get_reals(&[signals["h_m"]])?;
+let outputs = fmu_cs.get_reals(&[&signals["h_m"]])?;
 println!("{}", fmu_runner::outputs_to_string(&outputs));
 ```
 

@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `Fmu::variables()` method to easily get a reference to the signal map.
+
 ### Changed
 
 - `FmuInstance` is now generic over a `Borrow<FmuLibrary>` to allow the user to
     managed `FmuLibrary` lifetime using Cell types.
+- Refactored XML structs to deserialize directly to Enums.
+- Made `FmuInstance::lib` public.
+
+### Removed
+
+- Removed `FmiModelDescription::map_signals()` in favor of `Fmu::variables()`.
 
 ## 0.3.0 - 2023-10-17
 
