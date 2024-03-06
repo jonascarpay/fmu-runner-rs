@@ -39,6 +39,198 @@ fn test_bouncing_ball() {
     }
 }
 
+// Save a snapshot and restore it later
+#[test]
+fn test_bouncing_ball_with_snapshot() {
+    let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))
+        .unwrap()
+        .load(fmi2Type::fmi2CoSimulation)
+        .unwrap();
+
+    let signals = fmu.variables();
+
+    {
+        let fmu_cs = FmuInstance::instantiate(&fmu, true).unwrap();
+
+        fmu_cs.setup_experiment(0.0, None, None).unwrap();
+
+        // Test configuration remaining in the free fall part before first bounce
+        const H0: f64 = 10.0;
+        const STEP_SIZE: f64 = 0.5;
+        let h1: f64 = H0 + solve_free_fall(STEP_SIZE);
+        let h2: f64 = H0 + solve_free_fall(2.0 * STEP_SIZE);
+        let h_var = signals.get("h_m").unwrap();
+        let h_val = || {
+            fmu_cs
+                .get_reals(&[h_var])
+                .map(|hm| *hm.get(&h_var).unwrap())
+                .unwrap()
+        };
+
+        fmu_cs
+            .set_reals(&HashMap::from([(&signals["h_start"], H0)]))
+            .unwrap();
+
+        // Enter initialization
+        fmu_cs.enter_initialization_mode().unwrap();
+
+        // Retrieve modified start values
+        let h = h_val();
+        assert_eq!(h, H0);
+
+        // Exit initialization mode
+        fmu_cs.exit_initialization_mode().unwrap();
+
+        fmu_cs.do_step(0.0, STEP_SIZE, true).unwrap();
+
+        // Check h1 value
+        let h = h_val();
+        assert!(about_right(h, h1));
+
+        // Get snapshot
+        // - get its size
+        let mut size = 0usize;
+        fmu_cs.serialized_fmu_state_size(&mut size).unwrap();
+        // - allocate receiving buffer
+        let mut state = vec![0u8; size];
+        // - get the snapshot
+        fmu_cs.serialize_fmu_state(&mut state, size).unwrap();
+
+        // In real life you would normally save the snapshot in a file or in a database
+        // but here we just keep it in memory for simplicity of the test.
+
+        // Execute one step
+        fmu_cs.do_step(STEP_SIZE, STEP_SIZE, true).unwrap();
+
+        // Check h2 value
+        let h = h_val();
+        assert!(about_right(h, h2));
+
+        // Restore snapshot
+        fmu_cs.deserialize_fmu_state(&state, size).unwrap();
+
+        // Check h1 value
+        let h = h_val();
+        assert!(about_right(h, h1));
+
+        // Execute one step.
+        // Note that no_set_fmustate_prior_to_current_point argument is false
+        // (beware the double negative: this means that fmu state was just set)
+        fmu_cs.do_step(STEP_SIZE, STEP_SIZE, false).unwrap();
+
+        // Check h2 value
+        let h = h_val();
+        assert!(about_right(h, h2));
+    }
+}
+
+// Same with complete re-initialization before restore
+#[test]
+fn test_bouncing_ball_with_snapshot_reinit() {
+    // Test configuration remaining in the free fall part before first bounce
+    const H0: f64 = 10.0;
+    const STEP_SIZE: f64 = 0.5;
+    let h1: f64 = H0 + solve_free_fall(STEP_SIZE);
+    let h2: f64 = H0 + solve_free_fall(2.0 * STEP_SIZE);
+
+    let mut size = 0usize;
+    let mut state;
+
+    {
+        let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))
+            .unwrap()
+            .load(fmi2Type::fmi2CoSimulation)
+            .unwrap();
+
+        let signals = fmu.variables();
+
+        let fmu_cs = FmuInstance::instantiate(&fmu, true).unwrap();
+
+        fmu_cs.setup_experiment(0.0, None, None).unwrap();
+
+        let h_var = signals.get("h_m").unwrap();
+        let h_val = || {
+            fmu_cs
+                .get_reals(&[h_var])
+                .map(|hm| *hm.get(&h_var).unwrap())
+                .unwrap()
+        };
+
+        fmu_cs
+            .set_reals(&HashMap::from([(&signals["h_start"], H0)]))
+            .unwrap();
+
+        // Enter initialization
+        fmu_cs.enter_initialization_mode().unwrap();
+
+        // Retrieve modified start values
+        let h = h_val();
+        assert_eq!(h, H0);
+
+        // Exit initialization mode
+        fmu_cs.exit_initialization_mode().unwrap();
+
+        fmu_cs.do_step(0.0, STEP_SIZE, true).unwrap();
+
+        // Check h1 value
+        let h = h_val();
+        assert!(about_right(h, h1));
+
+        // Get snapshot
+        // - get its size
+        fmu_cs.serialized_fmu_state_size(&mut size).unwrap();
+        // - allocate receiving buffer
+        state = vec![0u8; size];
+        // - get the snapshot
+        fmu_cs.serialize_fmu_state(&mut state, size).unwrap();
+
+        // Execute one step
+        fmu_cs.do_step(STEP_SIZE, STEP_SIZE, true).unwrap();
+
+        // Check h2 value
+        let h = h_val();
+        assert!(about_right(h, h2));
+    }
+
+    // Reload the FMU from disk, re-initialize it and reload the snapshot
+    {
+        let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))
+            .unwrap()
+            .load(fmi2Type::fmi2CoSimulation)
+            .unwrap();
+
+        let signals = fmu.variables();
+
+        let fmu_cs = FmuInstance::instantiate(&fmu, true).unwrap();
+
+        fmu_cs.setup_experiment(0.0, None, None).unwrap();
+        fmu_cs.enter_initialization_mode().unwrap();
+        fmu_cs.exit_initialization_mode().unwrap();
+
+        let h_var = signals.get("h_m").unwrap();
+        let h_val = || {
+            fmu_cs
+                .get_reals(&[h_var])
+                .map(|hm| *hm.get(&h_var).unwrap())
+                .unwrap()
+        };
+
+        // Restore snapshot
+        fmu_cs.deserialize_fmu_state(&state, size).unwrap();
+
+        // Check h1 value
+        let h = h_val();
+        assert!(about_right(h, h1));
+
+        // Execute one step with no_set_fmustate_prior_to_current_point = false
+        fmu_cs.do_step(STEP_SIZE, STEP_SIZE, false).unwrap();
+
+        // Check h2 value
+        let h = h_val();
+        assert!(about_right(h, h2));
+    }
+}
+
 #[test]
 fn test_point_mass() {
     let fmu = Fmu::unpack(Path::new("./tests/fmu/point_mass_pendulum.fmu"))
