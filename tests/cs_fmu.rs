@@ -88,13 +88,11 @@ fn test_bouncing_ball_with_snapshot() {
         assert!(about_right(h, h1));
 
         // Get snapshot
-        // - get its size
-        let mut size = 0usize;
-        fmu_cs.serialized_fmu_state_size(&mut size).unwrap();
-        // - allocate receiving buffer
-        let mut state = vec![0u8; size];
-        // - get the snapshot
-        fmu_cs.serialize_fmu_state(&mut state, size).unwrap();
+        let state = fmu_cs
+            .get_set_state_capability()
+            .unwrap()
+            .get_state()
+            .unwrap();
 
         // In real life you would normally save the snapshot in a file or in a database
         // but here we just keep it in memory for simplicity of the test.
@@ -107,7 +105,11 @@ fn test_bouncing_ball_with_snapshot() {
         assert!(about_right(h, h2));
 
         // Restore snapshot
-        fmu_cs.deserialize_fmu_state(&state, size).unwrap();
+        fmu_cs
+            .get_set_state_capability()
+            .unwrap()
+            .set_state(state)
+            .unwrap();
 
         // Check h1 value
         let h = h_val();
@@ -133,8 +135,7 @@ fn test_bouncing_ball_with_snapshot_reinit() {
     let h1: f64 = H0 + solve_free_fall(STEP_SIZE);
     let h2: f64 = H0 + solve_free_fall(2.0 * STEP_SIZE);
 
-    let mut size = 0usize;
-    let mut state;
+    let serialized_state;
 
     {
         let fmu = Fmu::unpack(Path::new("./tests/fmu/bouncing_ball.fmu"))
@@ -177,12 +178,16 @@ fn test_bouncing_ball_with_snapshot_reinit() {
         assert!(about_right(h, h1));
 
         // Get snapshot
-        // - get its size
-        fmu_cs.serialized_fmu_state_size(&mut size).unwrap();
-        // - allocate receiving buffer
-        state = vec![0u8; size];
-        // - get the snapshot
-        fmu_cs.serialize_fmu_state(&mut state, size).unwrap();
+        let state = fmu_cs
+            .get_set_state_capability()
+            .unwrap()
+            .get_state()
+            .unwrap();
+        serialized_state = fmu_cs
+            .serialize_state_capability()
+            .unwrap()
+            .serialize_state(&state)
+            .unwrap();
 
         // Execute one step
         fmu_cs.do_step(STEP_SIZE, STEP_SIZE, true).unwrap();
@@ -216,7 +221,16 @@ fn test_bouncing_ball_with_snapshot_reinit() {
         };
 
         // Restore snapshot
-        fmu_cs.deserialize_fmu_state(&state, size).unwrap();
+        let state = fmu_cs
+            .serialize_state_capability()
+            .unwrap()
+            .deserialize_state(&serialized_state)
+            .unwrap();
+        fmu_cs
+            .get_set_state_capability()
+            .unwrap()
+            .set_state(state)
+            .unwrap();
 
         // Check h1 value
         let h = h_val();

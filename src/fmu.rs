@@ -63,6 +63,94 @@ pub struct FmuInstance<C: Borrow<FmuLibrary>> {
     callbacks: Box<fmi2CallbackFunctions>,
 }
 
+pub struct FmuState<'fmu, C: Borrow<FmuLibrary>>(fmi2FMUstate, &'fmu FmuInstance<C>);
+
+impl<'fmu, C: Borrow<FmuLibrary>> Drop for FmuState<'fmu, C> {
+    fn drop(&mut self) {
+        unsafe {
+            self.1
+                .lib
+                .borrow()
+                .fmi
+                .fmi2FreeFMUstate(self.1.instance, &mut self.0);
+        }
+    }
+}
+
+pub struct FmuGetSetStateCapability<'fmu, C: Borrow<FmuLibrary>>(&'fmu FmuInstance<C>);
+
+impl<'fmu, C: Borrow<FmuLibrary>> FmuGetSetStateCapability<'fmu, C> {
+    pub fn get_state(&self) -> Result<FmuState<'fmu, C>, FmuError> {
+        let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
+        let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
+        FmuInstance::<C>::ok_or_err(unsafe {
+            self.0
+                .lib
+                .borrow()
+                .fmi
+                .fmi2GetFMUstate(self.0.instance, pfmu2state)
+        })?;
+        Ok(FmuState(fmu2state, self.0))
+    }
+
+    pub fn set_state(&self, mut state: FmuState<'fmu, C>) -> Result<(), FmuError> {
+        let pfmu2state = std::ptr::addr_of_mut!(state.0);
+        FmuInstance::<C>::ok_or_err(unsafe {
+            self.0
+                .lib
+                .borrow()
+                .fmi
+                .fmi2SetFMUstate(self.0.instance, *pfmu2state)
+        })?;
+        Ok(())
+    }
+}
+
+pub struct FmuSerializeStateCapability<'fmu, C: Borrow<FmuLibrary>>(&'fmu FmuInstance<C>);
+
+impl<'fmu, C: Borrow<FmuLibrary>> FmuSerializeStateCapability<'fmu, C> {
+    pub fn serialize_state(&self, state: &FmuState<'fmu, C>) -> Result<Vec<u8>, FmuError> {
+        let mut size: usize = 0;
+        let pfmu2state = std::ptr::addr_of!(state.0);
+        FmuInstance::<C>::ok_or_err(unsafe {
+            self.0.lib.borrow().fmi.fmi2SerializedFMUstateSize(
+                self.0.instance,
+                *pfmu2state,
+                &mut size,
+            )
+        })?;
+        let mut serialized_state = vec![0u8; size];
+        let raw_serialized_state: *mut fmi2Byte = serialized_state.as_mut_ptr() as *mut i8;
+        FmuInstance::<C>::ok_or_err(unsafe {
+            self.0.lib.borrow().fmi.fmi2SerializeFMUstate(
+                self.0.instance,
+                *pfmu2state,
+                raw_serialized_state,
+                size,
+            )
+        })?;
+        Ok(serialized_state)
+    }
+
+    pub fn deserialize_state(
+        &self,
+        serialized_state: &[u8],
+    ) -> Result<FmuState<'fmu, C>, FmuError> {
+        let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
+        let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
+        let raw_serialized_state: *const fmi2Byte = serialized_state.as_ptr() as *const i8;
+        FmuInstance::<C>::ok_or_err(unsafe {
+            self.0.lib.borrow().fmi.fmi2DeSerializeFMUstate(
+                self.0.instance,
+                raw_serialized_state,
+                serialized_state.len(),
+                pfmu2state,
+            )
+        })?;
+        Ok(FmuState(fmu2state, self.0))
+    }
+}
+
 /// Generates unique instance names for starting new FMU instances.
 struct InstanceNameFactory {
     model_identifier: String,
@@ -267,6 +355,46 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
         })
     }
 
+    pub fn get_set_state_capability(&self) -> Option<FmuGetSetStateCapability<C>> {
+        if let Some(description) = self.lib.borrow().model_description.co_simulation.as_ref() {
+            if description.can_get_and_set_fmustate {
+                Some(FmuGetSetStateCapability(self))
+            } else {
+                None
+            }
+        } else if let Some(description) =
+            self.lib.borrow().model_description.model_exchange.as_ref()
+        {
+            if description.can_get_and_set_fmustate {
+                Some(FmuGetSetStateCapability(self))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn serialize_state_capability(&self) -> Option<FmuSerializeStateCapability<C>> {
+        if let Some(description) = self.lib.borrow().model_description.co_simulation.as_ref() {
+            if description.can_serialize_fmustate {
+                Some(FmuSerializeStateCapability(self))
+            } else {
+                None
+            }
+        } else if let Some(description) =
+            self.lib.borrow().model_description.model_exchange.as_ref()
+        {
+            if description.can_serialize_fmustate {
+                Some(FmuSerializeStateCapability(self))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn get_types_platform(&self) -> &str {
         let types_platform =
             unsafe { std::ffi::CStr::from_ptr(self.lib.borrow().fmi.fmi2GetTypesPlatform()) }
@@ -388,89 +516,6 @@ impl<C: Borrow<FmuLibrary>> FmuInstance<C> {
                 communication_step_size,
                 no_set_fmustate_prior_to_current_point as fmi2Boolean,
             )
-        })
-    }
-
-    pub fn serialized_fmu_state_size(&self, size: &mut usize) -> Result<(), FmuError> {
-        let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
-        let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2GetFMUstate(self.instance, pfmu2state)
-        })?;
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2SerializedFMUstateSize(self.instance, *pfmu2state, size)
-        })?;
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2FreeFMUstate(self.instance, pfmu2state)
-        })
-    }
-
-    pub fn serialize_fmu_state(
-        &self,
-        serialized_state: &mut [u8],
-        size: usize,
-    ) -> Result<(), FmuError> {
-        let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
-        let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2GetFMUstate(self.instance, pfmu2state)
-        })?;
-        let raw_serialized_state: *mut fmi2Byte = serialized_state.as_mut_ptr() as *mut i8;
-        Self::ok_or_err(unsafe {
-            self.lib.borrow().fmi.fmi2SerializeFMUstate(
-                self.instance,
-                *pfmu2state,
-                raw_serialized_state,
-                size,
-            )
-        })?;
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2FreeFMUstate(self.instance, pfmu2state)
-        })
-    }
-
-    pub fn deserialize_fmu_state(
-        &self,
-        serialized_state: &[u8],
-        size: usize,
-    ) -> Result<(), FmuError> {
-        let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
-        let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
-        let raw_serialized_state: *const fmi2Byte = serialized_state.as_ptr() as *const i8;
-        Self::ok_or_err(unsafe {
-            self.lib.borrow().fmi.fmi2DeSerializeFMUstate(
-                self.instance,
-                raw_serialized_state,
-                size,
-                pfmu2state,
-            )
-        })?;
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2SetFMUstate(self.instance, *pfmu2state)
-        })?;
-        Self::ok_or_err(unsafe {
-            self.lib
-                .borrow()
-                .fmi
-                .fmi2FreeFMUstate(self.instance, pfmu2state)
         })
     }
 
