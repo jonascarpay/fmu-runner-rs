@@ -3,6 +3,7 @@ use libfmi::{
     fmi2Boolean, fmi2Byte, fmi2CallbackFunctions, fmi2Component, fmi2FMUstate, fmi2Integer,
     fmi2Real, fmi2Status, fmi2Type, fmi2ValueReference, Fmi2Dll,
 };
+use itertools::Itertools;
 use std::{
     borrow::Borrow,
     collections::HashMap,
@@ -598,8 +599,8 @@ impl<C: Borrow<FmuLibrary>> Drop for FmuInstance<C> {
 pub fn outputs_to_string<T: Display>(outputs: &HashMap<&ScalarVariable, T>) -> String {
     let mut s = String::new();
 
-    for (signal, value) in outputs.iter() {
-        s.push_str(&format!("{}: {:.3} | ", signal.name, value));
+    for signal in outputs.keys().sorted_by_key(|s| &s.name) {
+        s.push_str(&format!("{}: {:.3} | ", signal.name, outputs[signal]));
     }
 
     s

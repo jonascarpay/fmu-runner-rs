@@ -26,6 +26,7 @@ libfmi = { path = "libfmi", version = "=2.2.4" }
 thiserror = "1.0.49"
 tempfile = "3.8.0"
 libloading = "0.8.1"
+itertools = "0.13.0"
 
 [dev-dependencies]
 rand = "0.8.5"
