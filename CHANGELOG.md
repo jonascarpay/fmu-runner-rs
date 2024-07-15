@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added new `Fmu::load_with_handler()` function for loading custom symbols from the
+    loaded FMU library.
+
 ### Changed
 
 - `outputs_to_string()` now sorts outputs by name.

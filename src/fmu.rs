@@ -1,9 +1,9 @@
 use crate::model_description::{FmiModelDescription, ScalarVariable};
+use itertools::Itertools;
 use libfmi::{
     fmi2Boolean, fmi2Byte, fmi2CallbackFunctions, fmi2Component, fmi2FMUstate, fmi2Integer,
     fmi2Real, fmi2Status, fmi2Type, fmi2ValueReference, Fmi2Dll,
 };
-use itertools::Itertools;
 use std::{
     borrow::Borrow,
     collections::HashMap,
@@ -230,6 +230,38 @@ impl Fmu {
 
     /// Load the FMU dynamic library.
     pub fn load(self, simulation_type: fmi2Type) -> Result<FmuLibrary, FmuLoadError> {
+        self.load_with_handler(simulation_type, |_| {})
+    }
+
+    /// Load the FMU dynamic library, but pass in a handler to load custom symbols
+    /// from the dynamic library before it's passed to the runner.
+    ///
+    /// This is useful for loading custom symbols and functions from the FMU library
+    /// that are not part of the FMI standard.
+    ///
+    /// # Example
+    /// ```
+    /// # use fmu_runner::Fmu;
+    /// # use std::path::Path;
+    /// # use fmu_runner::fmi2Type;
+    /// let mut register_handler: Option<force_injector::RegisterHandlerFn> = None;
+    /// let fmu = Fmu::unpack(Path::new("./tests/fmu/planar_ball.fmu"))
+    ///     .unwrap()
+    ///     .load_with_handler(fmi2Type::fmi2CoSimulation, |lib| {
+    ///         register_handler = unsafe { lib.get(b"register_handler\0") }
+    ///             .map(|sym| *sym)
+    ///             .ok();
+    ///     })
+    ///     .unwrap();
+    /// ```
+    pub fn load_with_handler<F>(
+        self,
+        simulation_type: fmi2Type,
+        handler: F,
+    ) -> Result<FmuLibrary, FmuLoadError>
+    where
+        F: FnOnce(&::libloading::Library),
+    {
         let (os_type, lib_type) = match env::consts::OS {
             "macos" => ("darwin", "dylib"),
             "linux" => ("linux", "so"),
@@ -273,29 +305,25 @@ impl Fmu {
             .join(&model_identifier);
         lib_path.set_extension(lib_type);
 
-        FmuLibrary::load(lib_path, simulation_type, self, model_identifier)
+        // Load the library
+        let library = unsafe { ::libloading::Library::new(lib_path)? };
+
+        // Let the user map their own symbols in the library
+        handler(&library);
+
+        // Map our signals in the library
+        let fmi = unsafe { Fmi2Dll::from_library(library) }?;
+
+        Ok(FmuLibrary {
+            fmi,
+            simulation_type,
+            fmu: self,
+            instance_name_factory: InstanceNameFactory::new(model_identifier),
+        })
     }
 
     pub fn variables(&self) -> &HashMap<String, ScalarVariable> {
         &self.model_description.model_variables.scalar_variable
-    }
-}
-
-impl FmuLibrary {
-    fn load(
-        lib_path: impl Into<std::path::PathBuf>,
-        simulation_type: fmi2Type,
-        fmu: Fmu,
-        model_identifier: String,
-    ) -> Result<Self, FmuLoadError> {
-        let fmi = unsafe { Fmi2Dll::new(lib_path.into()) }?;
-
-        Ok(Self {
-            fmi,
-            simulation_type,
-            fmu,
-            instance_name_factory: InstanceNameFactory::new(model_identifier),
-        })
     }
 }
 

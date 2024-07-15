@@ -363,6 +363,72 @@ fn test_box() {
     }
 }
 
+#[test]
+fn test_force_injection() {
+    let mut register_handler: Option<force_injector::RegisterHandlerFn> = None;
+
+    let fmu = Fmu::unpack(Path::new("./tests/fmu/planar_ball.fmu"))
+        .unwrap()
+        .load_with_handler(fmi2Type::fmi2CoSimulation, |lib| {
+            register_handler = unsafe { lib.get(b"register_handler\0") }
+                .map(|sym| *sym)
+                .ok();
+        })
+        .unwrap();
+
+    let signals = fmu.variables();
+
+    {
+        let fmu_cs = FmuInstance::instantiate(&fmu, true).unwrap();
+
+        fmu_cs.setup_experiment(0.0, None, None).unwrap();
+
+        // Enter initialization
+        fmu_cs.enter_initialization_mode().unwrap();
+
+        let instance_id = 2;
+
+        fmu_cs
+            .set_integers(&HashMap::from([(&signals["instanceID"], instance_id)]))
+            .unwrap();
+
+        // Register a function handler for the force to apply on the ball.
+        if let Some(register_handler) = register_handler {
+            extern "C" fn get_force(_t: f64) -> force_injector::Vec2 {
+                force_injector::Vec2 {
+                    x: 9.806,
+                    y: -9.806,
+                }
+            }
+
+            register_handler(instance_id, get_force);
+        }
+
+        // Exit initialization mode
+        fmu_cs.exit_initialization_mode().unwrap();
+
+        fmu_cs.do_step(0.0, 1.0, true).unwrap();
+        let outputs = fmu_cs
+            .get_reals(&[
+                &signals["position[1]"],
+                &signals["position[2]"],
+                &signals["velocity[1]"],
+                &signals["velocity[2]"],
+            ])
+            .unwrap();
+        println!("{}", outputs_to_string(&outputs));
+
+        assert!(about_right(
+            outputs[&signals["position[1]"]],
+            -solve_free_fall(1.0)
+        ));
+        assert!(about_right(
+            outputs[&signals["position[2]"]],
+            solve_free_fall(1.0)
+        ));
+    }
+}
+
 fn solve_free_fall(t: f64) -> f64 {
     const G: f64 = -9.806;
     G * t.powi(2) / 2.0
