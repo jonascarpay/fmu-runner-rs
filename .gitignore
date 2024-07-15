@@ -1,5 +1,5 @@
-/target
-/Cargo.lock
+target
+Cargo.lock
 # Ignore everything in tests/fmu that does not end with .fmu
 /tests/fmu/**
 !/tests/fmu/*.fmu

@@ -1,4 +1,4 @@
-FROM rust:1.72-bullseye
+FROM rust:1.79-bullseye
 
 RUN apt-get update && apt-get install -y zsh git llvm-dev libclang-dev clang build-essential ca-certificates curl gdb ssh sudo vim unzip less
 
