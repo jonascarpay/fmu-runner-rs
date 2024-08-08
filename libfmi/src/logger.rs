@@ -31,7 +31,7 @@ extern "C" fn callback_log(
 
     log::logger().log(
         &log::Record::builder()
-            .args(format_args!("{}", message))
+            .args(format_args!("{}", message.trim_end()))
             .level(level)
             .module_path(Some("logger"))
             .file(Some("logger.rs"))
