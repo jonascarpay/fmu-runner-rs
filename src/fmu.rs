@@ -121,7 +121,7 @@ impl<'fmu, C: Borrow<FmuLibrary>> FmuSerializeStateCapability<'fmu, C> {
             )
         })?;
         let mut serialized_state = vec![0u8; size];
-        let raw_serialized_state: *mut fmi2Byte = serialized_state.as_mut_ptr() as *mut i8;
+        let raw_serialized_state: *mut fmi2Byte = serialized_state.as_mut_ptr() as *mut fmi2Byte;
         FmuInstance::<C>::ok_or_err(unsafe {
             self.0.lib.borrow().fmi.fmi2SerializeFMUstate(
                 self.0.instance,
@@ -139,7 +139,7 @@ impl<'fmu, C: Borrow<FmuLibrary>> FmuSerializeStateCapability<'fmu, C> {
     ) -> Result<FmuState<'fmu, C>, FmuError> {
         let mut fmu2state: fmi2FMUstate = std::ptr::null_mut();
         let pfmu2state = std::ptr::addr_of_mut!(fmu2state);
-        let raw_serialized_state: *const fmi2Byte = serialized_state.as_ptr() as *const i8;
+        let raw_serialized_state: *const fmi2Byte = serialized_state.as_ptr() as *const fmi2Byte;
         FmuInstance::<C>::ok_or_err(unsafe {
             self.0.lib.borrow().fmi.fmi2DeSerializeFMUstate(
                 self.0.instance,
